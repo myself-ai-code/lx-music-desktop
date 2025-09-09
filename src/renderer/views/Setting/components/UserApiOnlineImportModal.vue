@@ -59,24 +59,73 @@ export default {
       if (!url) return
       this.disabled = true
       this.btnText = this.$t('user_api_import_online__input_loading')
-      let script
-      try {
-        script = await httpFetch(url, { follow_max: 3 }).promise.then(resp => resp.body)
-      } catch (err) {
-        void dialog(this.$t('user_api_import__failed', { message: err.message }))
-        return
-      } finally {
-        this.disabled = false
-        this.btnText = this.$t('user_api_import_online__input_confirm')
+      // 根据 URL 扩展名判断文件类型
+      let urlLower = url.toLowerCase()
+      if (urlLower.endsWith('.js')) {
+        let script
+        try {
+          script = await httpFetch(url, { follow_max: 3 }).promise.then(resp => resp.body)
+        } catch (err) {
+          void dialog(this.$t('user_api_import__failed', { message: err.message }))
+          return
+        } finally {
+          this.disabled = false
+          this.btnText = this.$t('user_api_import_online__input_confirm')
+        }
+        if (script.length > 9_000_000) {
+          void dialog(this.$t('user_api_import__failed', {
+            message: 'Too large script',
+            confirm: this.$t('ok'),
+          }))
+          return
+        }
+        this.$emit('import', script)
+      } else if (urlLower.endsWith('.json')) {
+        // 获取文件内容
+        const content = await httpFetch(url).promise.then(resp => {
+          // 确保 content 是字符串
+          if (typeof resp.body === 'string') {
+            return resp.body
+          } else if (resp.body instanceof Buffer) {
+            return resp.body.toString('utf8')
+          } else {
+            // 如果是 JSON 对象，转换为字符串
+            return JSON.stringify(resp.body)
+          }
+        })
+        // 处理 JSON 文件
+        let urlArray
+        try {
+          // 如果 resp.body 已解析为 JSON，避免重复解析
+          if (typeof content !== 'string') {
+            urlArray = content // 假设已解析
+          } else {
+            urlArray = JSON.parse(content)
+          }
+          if (!Array.isArray(urlArray)) {
+            void dialog(this.$t('user_api_import__failed', { message: 'JSON content is not a valid array' }))
+            return
+          }
+        } catch (parseErr) {
+          void dialog(this.$t('user_api_import__failed', { message: parseErr.message }))
+          return
+        }
+        // 遍历 JSON 数组中的所有 URL
+        for (const scriptUrl of urlArray) {
+          if (typeof scriptUrl !== 'string' || !scriptUrl.startsWith('http')) {
+            continue
+          }
+          const encodedUrl = encodeURI(scriptUrl)
+          let scriptContent
+          try {
+            scriptContent = await httpFetch(encodedUrl, { follow_max: 3 }).promise.then(resp => resp.body)
+            // 处理每个脚本
+            this.$emit('import', scriptContent)
+          } catch (err) {
+            void dialog(this.$t('user_api_import__failed', { message: err.message }))
+          }
+        }
       }
-      if (script.length > 9_000_000) {
-        void dialog(this.$t('user_api_import__failed', {
-          message: 'Too large script',
-          confirm: this.$t('ok'),
-        }))
-        return
-      }
-      this.$emit('import', script)
       this.handleClose()
     },
   },
@@ -111,9 +160,11 @@ export default {
   // height: 26px;
   padding: 8px 8px;
 }
+
 .footer {
   margin: 20px 0 15px auto;
 }
+
 .btn {
   // box-sizing: border-box;
   // margin-left: 15px;
@@ -124,7 +175,7 @@ export default {
   min-width: 70px;
   // .mixin-ellipsis-1();
 
-  +.btn {
+  + .btn {
     margin-left: 10px;
   }
 }
