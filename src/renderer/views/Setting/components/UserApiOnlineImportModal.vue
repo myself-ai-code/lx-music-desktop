@@ -54,79 +54,47 @@ export default {
       if (!/^https?:\/\//.test(this.url)) this.url = ''
       return this.url
     },
+    async fetchContent(url) {
+      const parsedUrl = new URL(url)
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Invalid URL protocol')
+      const { body } = await httpFetch(parsedUrl.href, { follow_max: 3 }).promise
+      return Buffer.isBuffer(body) ? body.toString('utf8') : body
+    },
+    async importScript(url) {
+      const script = await this.fetchContent(url)
+      if (typeof script !== 'string') throw new Error('Invalid script content')
+      if (script.length > 9_000_000) throw new Error('Too large script')
+      this.$emit('import', script)
+    },
     async handleSubmit() {
-      let url = this.verify()
+      if (this.disabled) return
+      const url = this.verify()
       if (!url) return
       this.disabled = true
       this.btnText = this.$t('user_api_import_online__input_loading')
-      // 根据 URL 扩展名判断文件类型
-      let urlLower = url.toLowerCase()
-      if (urlLower.endsWith('.js')) {
-        let script
-        try {
-          script = await httpFetch(url, { follow_max: 3 }).promise.then(resp => resp.body)
-        } catch (err) {
-          void dialog(this.$t('user_api_import__failed', { message: err.message }))
-          return
-        } finally {
-          this.disabled = false
-          this.btnText = this.$t('user_api_import_online__input_confirm')
+      try {
+        if (new URL(url).pathname.toLowerCase().endsWith('.json')) {
+          const content = await this.fetchContent(url)
+          const urls = typeof content === 'string' ? JSON.parse(content) : content
+          if (!Array.isArray(urls)) throw new Error('JSON content is not a valid array')
+          for (const scriptUrl of urls) {
+            if (typeof scriptUrl !== 'string') continue
+            try {
+              await this.importScript(scriptUrl)
+            } catch (err) {
+              void dialog(this.$t('user_api_import__failed', { message: err.message }))
+            }
+          }
+        } else {
+          await this.importScript(url)
         }
-        if (script.length > 9_000_000) {
-          void dialog(this.$t('user_api_import__failed', {
-            message: 'Too large script',
-            confirm: this.$t('ok'),
-          }))
-          return
-        }
-        this.$emit('import', script)
-      } else if (urlLower.endsWith('.json')) {
-        // 获取文件内容
-        const content = await httpFetch(url).promise.then(resp => {
-          // 确保 content 是字符串
-          if (typeof resp.body === 'string') {
-            return resp.body
-          } else if (resp.body instanceof Buffer) {
-            return resp.body.toString('utf8')
-          } else {
-            // 如果是 JSON 对象，转换为字符串
-            return JSON.stringify(resp.body)
-          }
-        })
-        // 处理 JSON 文件
-        let urlArray
-        try {
-          // 如果 resp.body 已解析为 JSON，避免重复解析
-          if (typeof content !== 'string') {
-            urlArray = content // 假设已解析
-          } else {
-            urlArray = JSON.parse(content)
-          }
-          if (!Array.isArray(urlArray)) {
-            void dialog(this.$t('user_api_import__failed', { message: 'JSON content is not a valid array' }))
-            return
-          }
-        } catch (parseErr) {
-          void dialog(this.$t('user_api_import__failed', { message: parseErr.message }))
-          return
-        }
-        // 遍历 JSON 数组中的所有 URL
-        for (const scriptUrl of urlArray) {
-          if (typeof scriptUrl !== 'string' || !scriptUrl.startsWith('http')) {
-            continue
-          }
-          const encodedUrl = encodeURI(scriptUrl)
-          let scriptContent
-          try {
-            scriptContent = await httpFetch(encodedUrl, { follow_max: 3 }).promise.then(resp => resp.body)
-            // 处理每个脚本
-            this.$emit('import', scriptContent)
-          } catch (err) {
-            void dialog(this.$t('user_api_import__failed', { message: err.message }))
-          }
-        }
+        this.handleClose()
+      } catch (err) {
+        void dialog(this.$t('user_api_import__failed', { message: err.message }))
+      } finally {
+        this.disabled = false
+        this.btnText = this.$t('user_api_import_online__input_confirm')
       }
-      this.handleClose()
     },
   },
 }
