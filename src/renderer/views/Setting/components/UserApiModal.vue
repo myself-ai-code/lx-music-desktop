@@ -31,7 +31,7 @@ material-modal(:show="modelValue" bg-close teleport="#view" @close="handleClose"
 
 <script>
 import { importUserApi, removeUserApi, showSelectDialog, setAllowShowUserApiUpdateAlert } from '@renderer/utils/ipc'
-import { readFile } from '@common/utils/nodejs'
+import { basename, readFile } from '@common/utils/nodejs'
 import { openUrl } from '@common/utils/electron'
 import apiSourceInfo from '@renderer/utils/musicSdk/api-source-info'
 import { userApi } from '@renderer/store'
@@ -81,16 +81,33 @@ export default {
       }
       void showSelectDialog({
         title: this.$t('user_api__import_file'),
-        properties: ['openFile'],
+        properties: ['openFile', 'multiSelections'],
         filters: [
           { name: 'LX API File', extensions: ['js'] },
           { name: 'All Files', extensions: ['*'] },
         ],
       }).then(async result => {
-        if (result.canceled) return
-        return readFile(result.filePaths[0]).then(async data => {
-          return this.importUserApi(data.toString())
-        })
+        if (result.canceled || !result.filePaths.length) return
+        if (this.userApi.list.length + result.filePaths.length > 20) {
+          this.$dialog({
+            message: this.$t('user_api__max_tip'),
+            confirmButtonText: this.$t('ok'),
+          })
+          return
+        }
+        const errors = []
+        for (const filePath of result.filePaths) {
+          try {
+            const data = await readFile(filePath)
+            const { apiList } = await importUserApi(data.toString())
+            userApi.list = apiList
+          } catch (err) {
+            errors.push(`${basename(filePath)}：${err.message}`)
+          }
+        }
+        if (errors.length) {
+          void dialog(this.$t('user_api_import__failed', { message: errors.join('\n') }))
+        }
       })
     },
     handleExport() {
