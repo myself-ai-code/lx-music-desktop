@@ -72,6 +72,7 @@
       </transition>
     </ul>
     <base-menu v-model="isShowMenu" :menus="menus" :xy="menuLocation" item-name="name" @menu-click="handleMenuClick" />
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" :list-id="downloadListId" teleport="#view" />
     <DuplicateMusicModal v-model:visible="isShowDuplicateMusicModal" :list-info="duplicateListInfo" />
     <ListSortModal v-model:visible="isShowListSortModal" :list-info="sortListInfo" />
     <ListUpdateModal v-model:visible="isShowListUpdateModal" />
@@ -87,9 +88,10 @@ import ListSortModal from './components/ListSortModal.vue'
 import ListUpdateModal from './components/ListUpdateModal.vue'
 
 import { defaultList, loveList, userLists, fetchingListStatus } from '@renderer/store/list/state'
-import { removeUserList } from '@renderer/store/list/action'
+import { removeUserList, getListMusics } from '@renderer/store/list/action'
+import { assertApiSupport } from '@renderer/store/utils'
 
-import { ref, watch } from '@common/utils/vueTools'
+import { ref, shallowRef, watch } from '@common/utils/vueTools'
 import { useRouter } from '@common/utils/vueRouter'
 import { LIST_IDS } from '@common/constants'
 
@@ -129,6 +131,9 @@ export default {
 
     const dom_lists_list = ref(null)
     const rightClickItemIndex = ref(-10)
+    const isShowDownloadMultiple = ref(false)
+    const downloadMusicList = shallowRef([])
+    const downloadListId = ref('')
 
     const { handleImportList, handleExportList } = useShare()
     const { isShowListUpdateModal, handleUpdateSourceList } = useListUpdate()
@@ -164,6 +169,27 @@ export default {
       })
     }
 
+    const handleDownloadAll = async(listInfo) => {
+      let list = []
+      try {
+        list = await getListMusics(listInfo.id)
+      } catch (err) {
+        console.log(err)
+      }
+      // 过滤本地歌曲与当前音源不支持下载的歌曲
+      const targets = list.filter(item => item.source != 'local' && assertApiSupport(item.source))
+      if (!targets.length) {
+        void dialog({
+          message: t('lists__download_all_empty'),
+          confirmButtonText: t('ok'),
+        })
+        return
+      }
+      downloadMusicList.value = targets
+      downloadListId.value = listInfo.id
+      isShowDownloadMultiple.value = true
+    }
+
     const {
       menus,
       menuLocation,
@@ -180,6 +206,7 @@ export default {
       handleSortList,
       handleDuplicateList,
       handleRename,
+      handleDownloadAll,
       handleRemove,
     })
 
@@ -243,6 +270,9 @@ export default {
       menuLocation,
       handleListToggle,
       isModDown,
+      isShowDownloadMultiple,
+      downloadMusicList,
+      downloadListId,
       hideMenu: handleMenuClick,
     }
   },

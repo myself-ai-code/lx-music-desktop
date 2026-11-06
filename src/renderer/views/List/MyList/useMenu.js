@@ -14,6 +14,7 @@ export default ({
   handleImportList,
   handleExportList,
   handleUpdateSourceList,
+  handleDownloadAll,
   handleRemove,
 }) => {
   const menuControl = reactive({
@@ -21,6 +22,7 @@ export default ({
     duplicate: true,
     sort: true,
     local_file: true,
+    downloadAll: true,
     sourceDetail: true,
     import: true,
     export: true,
@@ -52,6 +54,11 @@ export default ({
         name: t('lists__select_local_file'),
         action: 'local_file',
         disabled: !menuControl.local_file,
+      },
+      {
+        name: t('lists__download_all'),
+        action: 'downloadAll',
+        disabled: !menuControl.downloadAll,
       },
       {
         name: t('lists__sync'),
@@ -163,6 +170,9 @@ export default ({
         break
       case 'local_file':
         addLocalFile(listInfo)
+        break
+      case 'downloadAll':
+        handleDownloadAll(listInfo)
         break
       case 'sourceDetail':
         handleOpenSourceDetailPage(listInfo)

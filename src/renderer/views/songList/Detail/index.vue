@@ -23,6 +23,13 @@
         >
           {{ $t('list__collect') }}
         </base-btn>
+        <base-btn
+          :class="$style.headerRightBtn"
+          :disabled="isFetchingDownloadList || !!listDetailInfo.noItemLabel"
+          @click="handleDownloadAll"
+        >
+          {{ isFetchingDownloadList ? $t('lists__download_all_loading') : $t('lists__download_all') }}
+        </base-btn>
         <base-btn :class="$style.headerRightBtn" @click="handleBack">{{ $t('back') }}</base-btn>
       </div>
     </div>
@@ -38,13 +45,16 @@
         @toggle-page="togglePage"
       />
     </div>
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" teleport="#view" />
   </div>
 </template>
 
 <script lang="ts">
-import { ref, watch } from '@common/utils/vueTools'
+import { ref, shallowRef, watch } from '@common/utils/vueTools'
 import { listDetailInfo } from '@renderer/store/songList/state'
-import { setVisibleListDetail } from '@renderer/store/songList/action'
+import { getListDetailAll, setVisibleListDetail } from '@renderer/store/songList/action'
+import { assertApiSupport } from '@renderer/store/utils'
+import { dialog } from '@renderer/plugins/Dialog'
 import { useRouter } from '@common/utils/vueRouter'
 import { addSongListDetail, playSongListDetail } from './action'
 import useList from './useList'
@@ -121,6 +131,38 @@ export default {
       void getListData(source.value, id.value, page, refresh.value)
     }
 
+    const isShowDownloadMultiple = ref(false)
+    const isFetchingDownloadList = ref(false)
+    const downloadMusicList = shallowRef<LX.Music.MusicInfoOnline[]>([])
+
+    const handleDownloadAll = async() => {
+      if (isFetchingDownloadList.value || !listDetailInfo.id) return
+      isFetchingDownloadList.value = true
+      try {
+        // 歌单详情页只加载了当前页，下载全部需要拉取所有分页
+        const list = await getListDetailAll(listDetailInfo.id, listDetailInfo.source)
+        // 过滤本地歌曲与当前音源不支持下载的歌曲
+        const targets = list.filter(item => item.source != 'local' && assertApiSupport(item.source))
+        if (!targets.length) {
+          void dialog({
+            message: window.i18n.t('lists__download_all_empty'),
+            confirmButtonText: window.i18n.t('ok'),
+          })
+          return
+        }
+        downloadMusicList.value = targets
+        isShowDownloadMultiple.value = true
+      } catch (err) {
+        console.log(err)
+        void dialog({
+          message: window.i18n.t('lists__download_all_failed'),
+          confirmButtonText: window.i18n.t('ok'),
+        })
+      } finally {
+        isFetchingDownloadList.value = false
+      }
+    }
+
     const handleBack = () => {
       setVisibleListDetail(false)
       if (window.lx.songListInfo.fromName) void router.replace({ name: window.lx.songListInfo.fromName })
@@ -152,6 +194,10 @@ export default {
       addSongListDetail,
       playSongListDetail,
       handlePlayList,
+      isShowDownloadMultiple,
+      isFetchingDownloadList,
+      downloadMusicList,
+      handleDownloadAll,
       handleBack,
     }
   },

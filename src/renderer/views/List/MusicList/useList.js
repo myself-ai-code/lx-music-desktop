@@ -62,6 +62,20 @@ export default ({ listRef, list }) => {
   }
   const keyEvent = useKeyEvent({ listRef, handleSelectAllData })
 
+  const isSelected = item => selectedList.value.includes(item)
+  const toggleSelect = item => {
+    const index = selectedList.value.indexOf(item)
+    lastSelectIndex = list.value.indexOf(item)
+    if (index > -1) selectedList.value.splice(index, 1)
+    else selectedList.value.push(item)
+  }
+  const isAllSelected = computed(() => list.value.length > 0 && selectedList.value.length == list.value.length)
+  const isIndeterminate = computed(() => selectedList.value.length > 0 && selectedList.value.length < list.value.length)
+  const toggleSelectAll = () => {
+    if (isAllSelected.value) removeAllSelect()
+    else handleSelectAllData()
+  }
+
   const handleSelectData = clickIndex => {
     if (keyEvent.isShiftDown) {
       if (selectedList.value.length) {
@@ -103,5 +117,10 @@ export default ({ listRef, list }) => {
     listItemHeight,
     removeAllSelect,
     handleSelectData,
+    isSelected,
+    toggleSelect,
+    isAllSelected,
+    isIndeterminate,
+    toggleSelectAll,
   }
 }

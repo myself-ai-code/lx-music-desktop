@@ -4,6 +4,20 @@
       <table>
         <thead>
           <tr v-if="actionButtonsVisible">
+            <th class="num" style="width: 4%;">
+              <span
+                :class="[$style.checkbox, { [$style.checked]: isAllSelected, [$style.indeterminate]: isIndeterminate }]"
+                role="checkbox" :aria-checked="isAllSelected" tabindex="0" :aria-label="$t('select_all')"
+                @click.stop="toggleSelectAll" @keydown.enter.space.stop.prevent="toggleSelectAll"
+              >
+                <svg v-if="isIndeterminate" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 0 448 512" space="preserve">
+                  <use xlink:href="#icon-check-indeterminate" />
+                </svg>
+                <svg v-else version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 32 448 448" space="preserve">
+                  <use xlink:href="#icon-check-true" />
+                </svg>
+              </span>
+            </th>
             <th class="num" style="width: 5%;">#</th>
             <th class="nobreak">{{ $t('music_name') }}</th>
             <th class="nobreak" style="width: 22%;">{{ $t('music_singer') }}</th>
@@ -12,6 +26,20 @@
             <th class="nobreak" style="width: 16%;">{{ $t('action') }}</th>
           </tr>
           <tr v-else>
+            <th class="num" style="width: 4%;">
+              <span
+                :class="[$style.checkbox, { [$style.checked]: isAllSelected, [$style.indeterminate]: isIndeterminate }]"
+                role="checkbox" :aria-checked="isAllSelected" tabindex="0" :aria-label="$t('select_all')"
+                @click.stop="toggleSelectAll" @keydown.enter.space.stop.prevent="toggleSelectAll"
+              >
+                <svg v-if="isIndeterminate" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 0 448 512" space="preserve">
+                  <use xlink:href="#icon-check-indeterminate" />
+                </svg>
+                <svg v-else version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 32 448 448" space="preserve">
+                  <use xlink:href="#icon-check-true" />
+                </svg>
+              </span>
+            </th>
             <th class="num" style="width: 5%;">#</th>
             <th class="nobreak">{{ $t('music_name') }}</th>
             <th class="nobreak" style="width: 25%;">{{ $t('music_singer') }}</th>
@@ -31,6 +59,17 @@
           class="list-item" :class="[{ [$style.active]: playerInfo.isPlayList && playerInfo.playIndex === index }, { selected: selectedIndex == index || rightClickSelectedIndex == index }, { active: selectedList.includes(item) }, { disabled: !assertApiSupport(item.source) }]"
           @click="handleListItemClick($event, index)" @contextmenu="handleListItemRightClick($event, index)"
         >
+          <div class="list-item-cell no-select" :class="$style.num" style="flex: 0 0 4%;" @click.stop>
+            <span
+              :class="[$style.checkbox, { [$style.checked]: isSelected(item) }]"
+              role="checkbox" :aria-checked="isSelected(item)" tabindex="0" :aria-label="$t('select')"
+              @click.stop="toggleSelect(item)" @keydown.enter.space.stop.prevent="toggleSelect(item)"
+            >
+              <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 32 448 448" space="preserve">
+                <use xlink:href="#icon-check-true" />
+              </svg>
+            </span>
+          </div>
           <div class="list-item-cell no-select" :class="$style.num" style="flex: 0 0 5%;">
             <transition name="play-active">
               <div v-if="playerInfo.isPlayList && playerInfo.playIndex === index" :class="$style.playIcon">
@@ -63,6 +102,17 @@
           :class="[{ [$style.active]: playerInfo.isPlayList && playerInfo.playIndex === index }, { selected: selectedIndex == index || rightClickSelectedIndex == index }, { active: selectedList.includes(item) }, { disabled: !assertApiSupport(item.source) }]"
           @click="handleListItemClick($event, index)" @contextmenu="handleListItemRightClick($event, index)"
         >
+          <div class="list-item-cell no-select" :class="$style.num" style="flex: 0 0 4%;" @click.stop>
+            <span
+              :class="[$style.checkbox, { [$style.checked]: isSelected(item) }]"
+              role="checkbox" :aria-checked="isSelected(item)" tabindex="0" :aria-label="$t('select')"
+              @click.stop="toggleSelect(item)" @keydown.enter.space.stop.prevent="toggleSelect(item)"
+            >
+              <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" viewBox="0 32 448 448" space="preserve">
+                <use xlink:href="#icon-check-true" />
+              </svg>
+            </span>
+          </div>
           <div class="list-item-cell no-select" :class="$style.num" style="flex: 0 0 5%;">
             <transition name="play-active">
               <div v-if="playerInfo.isPlayList && playerInfo.playIndex === index" :class="$style.playIcon">
@@ -168,6 +218,11 @@ export default {
       listItemHeight,
       handleSelectData,
       removeAllSelect,
+      isSelected,
+      toggleSelect,
+      isAllSelected,
+      isIndeterminate,
+      toggleSelectAll,
     } = useList({ listRef, list })
 
     const {
@@ -304,6 +359,11 @@ export default {
       listItemHeight,
       handleListItemClick,
       selectedList,
+      isSelected,
+      toggleSelect,
+      isAllSelected,
+      isIndeterminate,
+      toggleSelectAll,
       handleListItemRightClick,
       removeAllSelect,
       handleListBtnClick,
@@ -392,6 +452,36 @@ export default {
   align-items: center;
   justify-content: center;
   position: relative;
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-font-label);
+  border-radius: 3px;
+  color: var(--color-primary-font);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color .2s ease, border-color .2s ease;
+  svg {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  &.checked, &.indeterminate {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    svg {
+      opacity: 1;
+    }
+  }
+  &:hover {
+    border-color: var(--color-primary);
+  }
 }
 .playIcon {
   position: absolute;

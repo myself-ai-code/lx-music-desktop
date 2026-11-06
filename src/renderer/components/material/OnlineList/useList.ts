@@ -70,6 +70,20 @@ export default ({ props, listRef }: {
   }
   const keyEvent = useKeyEvent({ handleSelectAllData, listRef })
 
+  const isSelected = (item: LX.Music.MusicInfoOnline) => selectedList.value.includes(item)
+  const toggleSelect = (item: LX.Music.MusicInfoOnline) => {
+    const index = selectedList.value.indexOf(item)
+    lastSelectIndex = props.list.indexOf(item)
+    if (index > -1) selectedList.value.splice(index, 1)
+    else selectedList.value.push(item)
+  }
+  const isAllSelected = computed(() => props.list.length > 0 && selectedList.value.length == props.list.length)
+  const isIndeterminate = computed(() => selectedList.value.length > 0 && selectedList.value.length < props.list.length)
+  const toggleSelectAll = () => {
+    if (isAllSelected.value) removeAllSelect()
+    else handleSelectAllData()
+  }
+
   const handleSelectData = (clickIndex: number) => {
     if (keyEvent.isShiftDown) {
       if (selectedList.value.length) {
@@ -111,5 +125,10 @@ export default ({ props, listRef }: {
     listItemHeight,
     removeAllSelect,
     handleSelectData,
+    isSelected,
+    toggleSelect,
+    isAllSelected,
+    isIndeterminate,
+    toggleSelectAll,
   }
 }
