@@ -302,6 +302,21 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
 }> => {
   if (!await window.lx.apiInitPromise[0]) throw new Error('source init failed')
   // console.log(musicInfo.source)
+  // 当前音源不支持歌曲的来源时，尝试换源，避免直接调用导致 getMusicUrl 未定义
+  if (!assertApiSupport(musicInfo.source)) {
+    if (!allowToggleSource) throw new Error(window.i18n.t('toggle_source_failed'))
+    onToggleSource()
+    // eslint-disable-next-line @typescript-eslint/promise-function-async
+    return getOtherSource(musicInfo).then(otherSource => {
+      return getOnlineOtherSourceMusicUrl({
+        musicInfos: [...otherSource],
+        onToggleSource,
+        quality,
+        isRefresh,
+        retryedSource: [musicInfo.source],
+      })
+    })
+  }
   const targetQuality = quality ?? getPlayQuality(appSetting['player.playQuality'], musicInfo)
 
   let reqPromise
