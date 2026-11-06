@@ -18,8 +18,12 @@ export const onSettingChanged = (listener: LX.IpcRendererEventListenerParams<Par
 export const setWindowBounds = (bounds: LX.DesktopLyric.NewBounds) => {
   rendererSend<LX.DesktopLyric.NewBounds>(WIN_LYRIC_RENDERER_EVENT_NAME.set_win_bounds, bounds)
 }
+let previousResizable: boolean | null = null
 export const setWindowResizeable = (resizable: boolean) => {
-  rendererSend<boolean>(WIN_LYRIC_RENDERER_EVENT_NAME.set_win_resizeable, resizable)
+  if (previousResizable === resizable) return
+  previousResizable = resizable
+  // https://github.com/electron/electron/issues/48352
+  // rendererSend<boolean>(WIN_LYRIC_RENDERER_EVENT_NAME.set_win_resizeable, resizable)
 }
 
 export const sendConnectMainWindowEvent = () => {
@@ -35,6 +39,16 @@ export const onMainWindowInited = (listener: LX.IpcRendererEventListener): Remov
   rendererOn(WIN_LYRIC_RENDERER_EVENT_NAME.main_window_inited, listener)
   return () => {
     rendererOff(WIN_LYRIC_RENDERER_EVENT_NAME.main_window_inited, listener)
+  }
+}
+
+export const sendMouseEnterLeave = (isEnter: boolean) => {
+  rendererSend(WIN_LYRIC_RENDERER_EVENT_NAME.mouse_enter_leave, isEnter)
+}
+export const onMouseEnterLeave = (listener: LX.IpcRendererEventListenerParams<boolean>): RemoveListener => {
+  rendererOn<boolean>(WIN_LYRIC_RENDERER_EVENT_NAME.mouse_enter_leave, listener)
+  return () => {
+    rendererOff(WIN_LYRIC_RENDERER_EVENT_NAME.mouse_enter_leave, listener)
   }
 }
 

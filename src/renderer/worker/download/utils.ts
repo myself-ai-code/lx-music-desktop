@@ -1,27 +1,30 @@
 import { DOWNLOAD_STATUS, QUALITYS } from '@common/constants'
 import { filterFileName } from '@common/utils/common'
-import { mergeLyrics } from './lrcTool'
+import { buildLyrics } from './lrcTool'
 import fs from 'fs'
-import { clipFileNameLength, clipNameLength } from '@common/utils/tools'
+import { clipFileNameLength, clipNameLength, formatMusicName } from '@common/utils/tools'
 
 /**
  * 保存歌词文件
- * @param {*} filePath
- * @param {*} lrc
- * @param {*} format
  */
-export const saveLrc = async(lrcData: { lrc: string, tlrc: string | null, rlrc: string | null }, filePath: string, format: LX.LyricFormat) => {
-  const iconv = await import('iconv-lite')
-  const lrc = mergeLyrics(lrcData.lrc, lrcData.tlrc, lrcData.rlrc)
-  switch (format) {
+export const saveLrc = async(lrcData: LX.Music.LyricInfo, info: {
+  filePath: string
+  format: LX.LyricFormat
+  downloadLxlrc: boolean
+  downloadTlrc: boolean
+  downloadRlrc: boolean
+}) => {
+  const iconv = (await import('iconv-lite')).default
+  const lrc = buildLyrics(lrcData, info.downloadLxlrc, info.downloadTlrc, info.downloadRlrc)
+  switch (info.format) {
     case 'gbk':
-      fs.writeFile(filePath, iconv.encode(lrc, 'gbk', { addBOM: true }), err => {
+      fs.writeFile(info.filePath, iconv.encode(lrc, 'gbk', { addBOM: true }), err => {
         if (err) console.log(err)
       })
       break
     case 'utf8':
     default:
-      fs.writeFile(filePath, iconv.encode(lrc, 'utf8', { addBOM: true }), err => {
+      fs.writeFile(info.filePath, iconv.encode(lrc, 'utf8', { addBOM: true }), err => {
         if (err) console.log(err)
       })
       break
@@ -88,9 +91,7 @@ export const createDownloadInfo = (musicInfo: LX.Music.MusicInfoOnline, type: LX
       ext,
       filePath: '',
       listId,
-      fileName: filterFileName(`${clipFileNameLength(fileName
-        .replace('歌名', musicInfo.name)
-        .replace('歌手', clipNameLength(musicInfo.singer)))}.${ext}`),
+      fileName: filterFileName(`${clipFileNameLength(formatMusicName(fileName, musicInfo.name, clipNameLength(musicInfo.singer)))}.${ext}`),
     },
   }
   // downloadInfo.metadata.filePath = joinPath(savePath, downloadInfo.metadata.fileName)

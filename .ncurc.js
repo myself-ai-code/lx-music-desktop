@@ -6,6 +6,7 @@ module.exports = {
     'del',
     'comlink',
     'vue',
+    'vue-router',
     'image-size',
     'message2call',
     '@types/ws',
@@ -13,10 +14,17 @@ module.exports = {
     '@types/node',
     'electron-debug',
     'eslint-webpack-plugin',
+    'typescript',
+    'undici',
+    '@types/better-sqlite3',
+    'changelog-parser',
+    'webpack-dev-server',
 
     'eslint-plugin-vue',
     'vue-eslint-parser',
     // 'eslint-config-standard-with-typescript',
+
+    'webpack',
   ],
 
   // target: 'newest',
@@ -27,7 +35,9 @@ module.exports = {
 
   // target: 'patch',
   // filter: [
+  //   'electron',
   //   'vue',
+  //   'vue-router',
   // ],
 
   // target: 'minor',
@@ -36,9 +46,14 @@ module.exports = {
   //   'eslint',
   //   'eslint-webpack-plugin',
   //   'electron-debug',
+  //   'typescript',
   //   '@types/node',
+  //   'undici',
 
   //   'eslint-plugin-vue',
   //   'vue-eslint-parser',
+  //   'better-sqlite3',
+  //   '@types/better-sqlite3',
+  //   'webpack-dev-server',
   // ],
 }

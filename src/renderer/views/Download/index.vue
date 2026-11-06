@@ -62,6 +62,8 @@
       <base-menu v-model="isShowItemMenu" :menus="menus" :xy="menuLocation" item-name="name" @menu-click="handleMenuClick" />
       <!-- <base-menu :menus="listItemMenu" :location="listMenu.menuLocation" item-name="name" :is-show="listMenu.isShowItemMenu" @menu-click="handleListItemMenuClick" /> -->
     </div>
+    <common-list-add-modal v-model:show="isShowListAdd" :music-info="selectedAddMusicInfo" teleport="#view" />
+    <common-list-add-multiple-modal v-model:show="isShowListAddMultiple" :music-list="selectedList" teleport="#view" @confirm="removeAllSelect" />
   </div>
 </template>
 
@@ -75,8 +77,10 @@ import useTab from './useTab'
 import useMenu from './useMenu'
 import usePlay from './usePlay'
 import useTaskActions from './useTaskActions'
+import useMusicAdd from './useMusicAdd'
 import { downloadStatus } from '@renderer/store/download/state'
 import { appSetting } from '@renderer/store/setting'
+import { formatMusicName } from '@renderer/utils'
 
 export default {
   name: 'Download',
@@ -114,6 +118,13 @@ export default {
     } = useTaskActions({ list, removeAllSelect, selectedList })
 
     const {
+      isShowListAdd,
+      isShowListAddMultiple,
+      selectedAddMusicInfo,
+      handleShowMusicAddModal,
+    } = useMusicAdd({ selectedList, list })
+
+    const {
       menus,
       menuLocation,
       isShowItemMenu,
@@ -126,6 +137,7 @@ export default {
       handleOpenFile,
       handlePlayMusic,
       handlePlayMusicLater,
+      handleShowMusicAddModal,
       handleSearch,
       handleOpenMusicDetail,
     })
@@ -192,7 +204,7 @@ export default {
     }
 
     const getName = (downloadInfo) => {
-      return appSetting['download.fileName'].replace('歌名', downloadInfo.metadata.musicInfo.name).replace('歌手', downloadInfo.metadata.musicInfo.singer)
+      return formatMusicName(appSetting['download.fileName'], downloadInfo.metadata.musicInfo.name, downloadInfo.metadata.musicInfo.singer)
     }
     const getTypeName = (quality) => {
       return quality == 'flac24bit' ? 'FLAC Hires' : quality?.toUpperCase()
@@ -208,6 +220,12 @@ export default {
       selectedList,
       listItemHeight,
       playTaskId,
+
+      isShowListAdd,
+      isShowListAddMultiple,
+      selectedAddMusicInfo,
+
+      removeAllSelect,
 
       menus,
       menuLocation,

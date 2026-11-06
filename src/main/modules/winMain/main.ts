@@ -1,7 +1,7 @@
 import { BrowserWindow, dialog, session } from 'electron'
 import path from 'node:path'
 import { createTaskBarButtons, getWindowSizeInfo } from './utils'
-import { getPlatform, isLinux, isWin } from '@common/utils'
+import { getOSVersion, getPlatform, isLinux, isMac, isWin } from '@common/utils'
 import { getProxy, openDevTools as handleOpenDevTools } from '@main/utils'
 import { mainSend } from '@common/mainIpc'
 import { sendFocus, sendTaskbarButtonClick } from './rendererEvent'
@@ -40,10 +40,25 @@ const winEvent = () => {
   browserWindow.on('blur', () => {
     global.lx.event_app.main_window_blur()
   })
+  browserWindow.on('enter-full-screen', () => {
+    global.lx.event_app.main_window_fullscreen(true)
+  })
+  browserWindow.on('leave-full-screen', () => {
+    global.lx.event_app.main_window_fullscreen(false)
+
+    // macOS needs here to set resizable to false after exiting full screen
+    if (isMac) {
+      if (browserWindow?.resizable) {
+        browserWindow.setResizable(false)
+      }
+    }
+  })
 
   browserWindow.once('ready-to-show', () => {
-    showWindow()
-    setThumbarButtons()
+    if (!global.envParams.cmdParams.hidden) {
+      showWindow()
+      setThumbarButtons()
+    }
     global.lx.event_app.main_window_ready_to_show()
   })
 
@@ -66,11 +81,7 @@ export const createWindow = () => {
   const { shouldUseDarkColors, theme } = global.lx.theme
   const ses = session.fromPartition('persist:win-main')
   const proxy = getProxy()
-  if (proxy) {
-    void ses.setProxy({
-      proxyRules: `http://${proxy.host}:${proxy.port}`,
-    })
-  }
+  setSesProxy(ses, proxy?.host, proxy?.port)
 
   /**
    * Initial window options
@@ -109,7 +120,7 @@ export const createWindow = () => {
   browserWindow = new BrowserWindow(options)
 
   const winURL = process.env.NODE_ENV !== 'production' ? 'http://localhost:9080' : `file://${path.join(encodePath(__dirname), 'index.html')}`
-  void browserWindow.loadURL(winURL + `?os=${getPlatform()}&dt=${global.envParams.cmdParams.dt}&dark=${shouldUseDarkColors}&theme=${encodeURIComponent(JSON.stringify(theme))}`)
+  void browserWindow.loadURL(winURL + `?os=${getPlatform()}&osver=${encodeURIComponent(getOSVersion())}&dt=${global.envParams.cmdParams.dt}&dark=${shouldUseDarkColors}&theme=${encodeURIComponent(JSON.stringify(theme))}`)
 
   winEvent()
 
@@ -131,18 +142,22 @@ export const closeWindow = () => {
   browserWindow.close()
 }
 
+const setSesProxy = (ses: Electron.Session, host?: string, port?: string | number) => {
+  if (host) {
+    void ses.setProxy({
+      mode: 'fixed_servers',
+      proxyRules: `http://${host}:${port}`,
+    })
+  } else {
+    void ses.setProxy({
+      mode: 'direct',
+    })
+  }
+}
 export const setProxy = () => {
   if (!browserWindow) return
   const proxy = getProxy()
-  if (proxy) {
-    void browserWindow.webContents.session.setProxy({
-      proxyRules: `http://${proxy.host}:${proxy.port}`,
-    })
-  } else {
-    void browserWindow.webContents.session.setProxy({
-      proxyRules: '',
-    })
-  }
+  setSesProxy(browserWindow.webContents.session, proxy?.host, proxy?.port)
 }
 
 
@@ -226,13 +241,17 @@ export const toggleDevTools = () => {
 
 export const setFullScreen = (isFullscreen: boolean): boolean => {
   if (!browserWindow) return false
-  if (isLinux) { // linux 需要先设置为可调整窗口大小才能全屏
+  // https://github.com/any-listen/any-listen/issues/190
+  // in electron ^41.2.0, windows -dt mode need to set resizable to true before setting full screen
+  if (!!global.envParams.cmdParams.dt || isLinux) {
+    // linux 需要先设置为可调整窗口大小才能全屏
     if (isFullscreen) {
       browserWindow.setResizable(isFullscreen)
       browserWindow.setFullScreen(isFullscreen)
     } else {
       browserWindow.setFullScreen(isFullscreen)
-      browserWindow.setResizable(isFullscreen)
+      // windows/linux need to set resizable to true after exiting full screen
+      if (!isMac) browserWindow.setResizable(isFullscreen)
     }
   } else {
     browserWindow.setFullScreen(isFullscreen)

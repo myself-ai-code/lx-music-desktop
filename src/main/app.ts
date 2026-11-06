@@ -2,7 +2,7 @@ import path from 'node:path'
 import { existsSync, mkdirSync, renameSync } from 'fs'
 import { app, shell, screen, nativeTheme, dialog } from 'electron'
 import { URL_SCHEME_RXP } from '@common/constants'
-import { getTheme, initHotKey, initSetting, parseEnvParams } from './utils'
+import { getProxy, getTheme, initHotKey, initSetting, parseEnvParams } from './utils'
 import { navigationUrlWhiteList } from '@common/config'
 import defaultSetting from '@common/defaultSetting'
 import { isExistWindow as isExistMainWindow, showWindow as showMainWindow } from './modules/winMain'
@@ -11,10 +11,11 @@ import { isMac, log } from '@common/utils'
 import createWorkers from './worker'
 import { migrateDBData } from './utils/migrate'
 import { openDirInExplorer } from '@common/utils/electron'
+import { setProxyByHost } from '@common/utils/request'
 
 export const initGlobalData = () => {
   const envParams = parseEnvParams()
-  envParams.cmdParams.dt = !!envParams.cmdParams.dt
+  // envParams.cmdParams.dt = !!envParams.cmdParams.dt
 
   global.envParams = {
     cmdParams: envParams.cmdParams,
@@ -64,7 +65,12 @@ export const initGlobalData = () => {
       lyricLineText: '',
       lyricLineAllText: '',
       lyric: '',
+      tlyric: '',
+      rlyric: '',
+      lxlyric: '',
       collect: false,
+      volume: 0,
+      mute: false,
     },
   }
 
@@ -82,16 +88,16 @@ export const initSingleInstanceHandle = () => {
   }
 
   app.on('second-instance', (event, argv, cwd) => {
-    for (const param of argv) {
-      if (URL_SCHEME_RXP.test(param)) {
-        global.envParams.deeplink = param
-        break
-      }
-    }
-
     if (isExistMainWindow()) {
-      if (global.envParams.deeplink) global.lx.event_app.deeplink(global.envParams.deeplink)
-      else showMainWindow()
+      const envParams = parseEnvParams(argv)
+      if (envParams.deeplink) {
+        global.envParams.deeplink = envParams.deeplink
+        global.lx.event_app.deeplink(global.envParams.deeplink)
+        return
+      }
+      if (envParams.cmdParams.hidden !== true) {
+        showMainWindow()
+      }
     } else {
       app.quit()
     }
@@ -230,6 +236,30 @@ export const listenerAppEvent = (startApp: () => void) => {
     global.lx.theme.shouldUseDarkColors = shouldUseDarkColors
     global.lx?.event_app.system_theme_change(shouldUseDarkColors)
   })
+
+  const setProxy = () => {
+    const proxy = getProxy()
+    if (proxy) {
+      setProxyByHost(proxy.host, proxy.port ? String(proxy.port) : undefined)
+    } else setProxyByHost()
+  }
+  global.lx.event_app.on('updated_config', (keys, setting) => {
+    if (keys.includes('network.proxy.enable') || (global.lx.appSetting['network.proxy.enable'] && keys.some(k => k.includes('network.proxy.')))) {
+      setProxy()
+    }
+
+    if (keys.includes('player.volume')) {
+      global.lx.event_app.player_status({ volume: Math.trunc(setting['player.volume']! * 100) })
+    }
+    if (keys.includes('player.isMute')) {
+      global.lx.event_app.player_status({ mute: setting['player.isMute'] })
+    }
+  })
+  global.lx.event_app.on('app_inited', () => {
+    setProxy()
+    global.lx.event_app.player_status({ volume: Math.trunc(global.lx.appSetting['player.volume'] * 100) })
+    global.lx.event_app.player_status({ mute: global.lx.appSetting['player.isMute'] })
+  })
 }
 
 const initTheme = () => {
@@ -256,6 +286,20 @@ const initTheme = () => {
   })
 }
 
+const backupDB = (backupPath: string) => {
+  const dbPath = path.join(global.lxDataPath, 'lx.data.db')
+  try {
+    renameSync(dbPath, backupPath)
+  } catch {}
+  try {
+    renameSync(`${dbPath}-wal`, `${backupPath}-wal`)
+  } catch {}
+  try {
+    renameSync(`${dbPath}-shm`, `${backupPath}-shm`)
+  } catch {}
+  openDirInExplorer(backupPath)
+}
+
 let isInitialized = false
 export const initAppSetting = async() => {
   if (!global.lx.inited) {
@@ -268,19 +312,19 @@ export const initAppSetting = async() => {
   if (!isInitialized) {
     let dbFileExists = await global.lx.worker.dbService.init(global.lxDataPath)
     if (dbFileExists === null) {
-      const backPath = path.join(global.lxDataPath, `lx.data.db.${Date.now()}.bak`)
+      const backupPath = path.join(global.lxDataPath, `lx.data.db.${Date.now()}.bak`)
       dialog.showMessageBoxSync({
         type: 'warning',
         message: 'Database verify failed',
-        detail: `数据库表结构校验失败，我们将把有问题的数据库备份到：${backPath}\n若此问题导致你的数据丢失，你可以尝试从备份文件找回它们。\n\nThe database table structure verification failed, we will back up the problematic database to: ${backPath}\nIf this problem causes your data to be lost, you can try to retrieve them from the backup file.`,
+        detail: `数据库表结构校验失败，我们将把有问题的数据库备份到：${backupPath}\n若此问题导致你的数据丢失，你可以尝试从备份文件找回它们。\n\nThe database table structure verification failed, we will back up the problematic database to: ${backupPath}\nIf this problem causes your data to be lost, you can try to retrieve them from the backup file.`,
       })
-      renameSync(path.join(global.lxDataPath, 'lx.data.db'), backPath)
-      openDirInExplorer(backPath)
+      backupDB(backupPath)
       dbFileExists = await global.lx.worker.dbService.init(global.lxDataPath)
     }
     global.lx.appSetting = (await initSetting()).setting
     if (!dbFileExists) await migrateDBData().catch(err => { log.error(err) })
     initTheme()
+    if (envParams.cmdParams.dt == null) envParams.cmdParams.dt = !global.lx.appSetting['common.transparentWindow']
   }
   // global.lx.theme = getTheme()
 

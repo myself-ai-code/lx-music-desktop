@@ -1,7 +1,7 @@
 import { checkPath, joinPath, extname, basename, readFile, getFileStats } from '@common/utils/nodejs'
 import { formatPlayTime } from '@common/utils/common'
-import type { IComment } from 'music-metadata/lib/type'
 import { decodeKrc } from '@common/utils/lyricUtils/kg'
+import { type IAudioMetadata } from 'music-metadata'
 
 export const checkDownloadFileAvailable = async(musicInfo: LX.Download.ListItem, savePath: string): Promise<boolean> => {
   return musicInfo.isComplate && !/\.ape$/.test(musicInfo.metadata.fileName) &&
@@ -164,6 +164,7 @@ export const getLocalMusicFilePic = async(path: string) => {
 //   return lyricInfo
 // }
 
+type IComment = NonNullable<IAudioMetadata['common']['comment']> extends Array<infer U> ? U : never
 
 /**
  * 获取歌曲文件歌词
@@ -181,7 +182,7 @@ export const getLocalMusicFileLyric = async(path: string): Promise<LX.Music.Lyri
     const { confidence, encoding } = detect(lrcBuf)
     console.log('lrc file encoding', confidence, encoding)
     if (confidence > 0.8) {
-      const iconv = await import('iconv-lite')
+      const iconv = (await import('iconv-lite')).default
       if (iconv.encodingExists(encoding)) {
         const lrc = iconv.decode(lrcBuf, encoding)
         if (lrc) {
@@ -210,15 +211,15 @@ export const getLocalMusicFileLyric = async(path: string): Promise<LX.Music.Lyri
   const metadata = await getFileMetadata(path)
   // console.log(metadata?.common)
   if (!metadata) return null
-  let lyricInfo = metadata.common.lyrics?.[0]
-  if (lyricInfo) {
-    let lyric: string | undefined
-    if (typeof lyricInfo == 'object') lyric = lyricInfo.text
-    else if (typeof lyricInfo == 'string') lyric = lyricInfo
-    if (lyric && lyric.length > 10) {
-      return { lyric }
-    }
-  }
+  // let lyricInfo = metadata.common.lyrics?.[0]
+  // if (lyricInfo) {
+  //   let lyric: string | undefined
+  //   if (typeof lyricInfo == 'object') lyric = lyricInfo.text
+  //   else if (typeof lyricInfo == 'string') lyric = lyricInfo
+  //   if (lyric && lyric.length > 10) {
+  //     return { lyric }
+  //   }
+  // }
   // console.log(metadata)
   for (const info of Object.values(metadata.native)) {
     for (const ust of info) {

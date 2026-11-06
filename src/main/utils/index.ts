@@ -1,4 +1,4 @@
-import { encodePath, isUrl, throttle } from '@common/utils'
+import { encodePath, isUrl, throttle, isMac } from '@common/utils'
 import migrateSetting from '@common/utils/migrateSetting'
 import getStore from '@main/utils/store'
 import { STORE_NAMES, URL_SCHEME_RXP } from '@common/constants'
@@ -9,11 +9,11 @@ import { nativeTheme, powerSaveBlocker } from 'electron'
 import { joinPath } from '@common/utils/nodejs'
 import themes from '@common/theme/index.json'
 
-export const parseEnvParams = (): { cmdParams: LX.CmdParams, deeplink: string | null } => {
+export const parseEnvParams = (argv = process.argv): { cmdParams: LX.CmdParams, deeplink: string | null } => {
   const cmdParams: LX.CmdParams = {}
   let deeplink = null
   const rx = /^-\w+/
-  for (let param of process.argv) {
+  for (let param of argv) {
     if (URL_SCHEME_RXP.test(param)) {
       deeplink = param
     }
@@ -107,6 +107,11 @@ export const mergeSetting = (originSetting: LX.AppSetting, targetSetting?: Parti
   }
 }
 
+const applyInitSetting = (setting: LX.AppSetting) => {
+  if (global.envParams.cmdParams.hidden && !setting['tray.enable']) {
+    setting['tray.enable'] = true
+  }
+}
 
 export const updateSetting = (setting?: Partial<LX.AppSetting>, isInit: boolean = false) => {
   const electronStore_config = getStore(STORE_NAMES.APP_SETTINGS)
@@ -114,6 +119,7 @@ export const updateSetting = (setting?: Partial<LX.AppSetting>, isInit: boolean 
   let originSetting: LX.AppSetting
   if (isInit) {
     setting &&= migrateSetting(setting)
+    applyInitSetting(setting as LX.AppSetting)
     originSetting = { ...defaultSetting }
   } else originSetting = global.lx.appSetting
 
@@ -257,7 +263,7 @@ export const getTheme = () => {
         theme.config.extInfo['--background-image'] =
           isUrl(theme.config.extInfo['--background-image'])
             ? `url(${theme.config.extInfo['--background-image']})`
-            : `url(file:///${encodePath(joinPath(global.lxDataPath, 'theme_images', theme.config.extInfo['--background-image']))})`
+            : `url(${encodePath(joinPath(global.lxDataPath, 'theme_images', theme.config.extInfo['--background-image']))})`
       }
     } else {
       themeId = global.lx.appSetting['theme.id'] == 'auto' && shouldUseDarkColors ? 'black' : 'green'
@@ -287,7 +293,7 @@ export const setPowerSaveBlocker = (enabled: boolean) => {
   let isEnabled = powerSaveBlockerId != null && powerSaveBlocker.isStarted(powerSaveBlockerId)
   if (enabled) {
     if (isEnabled) return
-    powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension')
+    powerSaveBlockerId = powerSaveBlocker.start(isMac ? 'prevent-display-sleep' : 'prevent-app-suspension')
   } else {
     if (!isEnabled) return
     powerSaveBlocker.stop(powerSaveBlockerId!)

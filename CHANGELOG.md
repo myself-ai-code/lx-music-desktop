@@ -6,6 +6,139 @@ Project versioning adheres to [Semantic Versioning](http://semver.org/).
 Commit convention is based on [Conventional Commits](http://conventionalcommits.org).
 Change log format is based on [Keep a Changelog](http://keepachangelog.com/).
 
+## [2.12.6](https://github.com/lyswhut/lx-music-desktop/compare/v2.12.5...v2.12.6) - 2026-09-19
+
+目前新项目 Any Listen 的桌面版、Web 版已实现 LX Music 的大部分功能，并额外支持 WebDAV 歌曲播放、WebDAV 数据同步、独立播放列表等功能。
+以后的开发精力将主要集中在新项目上，之前大家在 LX Music 提的功能我们也会考虑在新项目中添加。
+对于日常使用 LX Music 的人可以试试迁移到 Any Listen，若遇到任何问题可以发 issue 反馈。
+Any Listen 的项目地址为 https://github.com/any-listen/any-listen
+
+### 优化
+
+- 优化 tx 推荐歌单列表
+- 优化禁用透明窗口的窗口边框显示效果
+
+### 修复
+
+- 修复打开某些 kg 歌单时歌曲丢失的问题
+- 修复 Windows 7 无法启动的问题
+- 修复禁用透明窗口时按 F11 无法全屏的问题
+
+## [2.12.5](https://github.com/lyswhut/lx-music-desktop/compare/v2.12.4...v2.12.5) - 2026-09-14
+
+目前新项目 Any Listen 的桌面版、Web 版已实现 LX Music 的大部分功能，并额外支持 WebDAV 歌曲播放、WebDAV 数据同步、独立播放列表等功能。
+以后的开发精力将主要集中在新项目上，之前大家在 LX Music 提的功能我们也会考虑在新项目中添加。
+对于日常使用 LX Music 的人可以试试迁移到 Any Listen，若遇到任何问题可以发 issue 反馈。
+Any Listen 的项目地址为 https://github.com/any-listen/any-listen
+
+### 修复
+
+- 修复自定义主题编辑器的颜色选择器默认值显示异常的问题（#2957）
+- 修复下载的 MP3 文件内嵌歌曲数据失败的问题（#2959）
+
+## [2.12.4](https://github.com/lyswhut/lx-music-desktop/compare/v2.12.3...v2.12.4) - 2026-09-12
+
+目前新项目 Any Listen 的桌面版、Web 版已实现 LX Music 的大部分功能，并额外支持 WebDAV 歌曲播放、WebDAV 数据同步、独立播放列表等功能。
+以后的开发精力将主要集中在新项目上，之前大家在 LX Music 提的功能我们也会考虑在新项目中添加。
+对于日常使用 LX Music 的人可以试试迁移到 Any Listen，若遇到任何问题可以发 issue 反馈。
+Any Listen 的项目地址为 https://github.com/any-listen/any-listen
+
+### 修复
+
+- 修复自定义主题背景图片无法显示的问题
+
+## [2.12.3](https://github.com/lyswhut/lx-music-desktop/compare/v2.12.2...v2.12.3) - 2026-09-12
+
+目前新项目 Any Listen 的桌面版、Web 版已实现 LX Music 的大部分功能，并额外支持 WebDAV 歌曲播放、WebDAV 数据同步、独立播放列表等功能。
+以后的开发精力将主要集中在新项目上，之前大家在 LX Music 提的功能我们也会考虑在新项目中添加。
+对于日常使用 LX Music 的人可以试试迁移到 Any Listen，若遇到任何问题可以发 issue 反馈。
+Any Listen 的项目地址为 https://github.com/any-listen/any-listen
+
+### 优化
+
+- 优化kw歌单列表数据显示
+- 同步服务在连接时允许URL重定向
+- Linux 点击托盘时将显示主界面（#2840）
+- 优化自动换源歌曲匹配机制
+
+### 修复
+
+- 修复 kg 搜索结果显示问题 (#2782)
+- 修复某些情况下开放 API 获取到的音量为 0 的问题 (#2790)
+- 修复 mg 图片、歌词获取
+- 修复某些 tx 歌单打开失败的问题 (#1060, @ght-000)
+- 修复在某些情况下添加、移动歌曲时可能导致保存的歌曲顺序不对的问题（#2842）
+- 修复歌词标签解析格式没有严格按照标准的问题（#2855）
+- 修复 tx 歌曲搜索失败的问题（#2848, @ikun0014）
+
+## [2.12.2](https://github.com/lyswhut/lx-music-desktop/compare/v2.12.1...v2.12.2) - 2026-05-01
+
+我们很高兴地宣布新项目 Any Listen 的桌面版已发布，目前已支持列表跟随本地文件自动更新、加载并播放WebDAV上的歌曲等功能，更多功能仍在积极开发中，桌面版与Web版将同步更新。
+对于有播放本地音乐或播放服务器上音乐需求的人可以试试，若遇到任何问题可以发 issue 反馈。
+
+### 优化
+
+- 优化歌单内歌曲搜索结果排序 (#2734)
+
+### 修复
+
+- 修复桌面歌词的 鼠标移入歌词区域时提高透明度 设置不稳定的问题（#2679, @Little100）
+- 修复某些情况下可能播放没有声音的问题（#2693）
+- 修复 tx 搜索结果显示异常的问题（#2753）
+- 修复音乐名称和歌手信息格式化问题（#2733）
+
+### 其他
+
+- 更新 Electron 到 40.8.3
+
+## [2.12.1](https://github.com/lyswhut/lx-music-desktop/compare/v2.12.0...v2.12.1) - 2026-02-16
+
+我们很高兴地宣布新项目 Any Listen 的桌面版已发布，目前已支持列表跟随本地文件自动更新、加载并播放WebDAV上的歌曲等功能，更多功能仍在积极开发中，桌面版与Web版将同步更新。
+对于有播放本地音乐或播放服务器上音乐需求的人可以试试，若遇到任何问题可以发 issue 反馈。
+
+### 优化
+
+- 优化托盘图标行为：在非 Windows 系统中，点击托盘图标时不再显示主窗口
+
+### 修复
+
+- 修复音量条在调整音量时实际音量与显示的数值不一致的问题（#2606）
+- 修复某些情况下搜索框的搜索按钮布局错位的问题（#2622）
+
+## [2.12.0](https://github.com/lyswhut/lx-music-desktop/compare/v2.11.0...v2.12.0) - 2025-11-29
+
+我们很高兴地宣布新项目 Any Listen 的桌面版已发布，目前已支持列表跟随本地文件自动更新、加载并播放WebDAV上的歌曲等功能，更多功能仍在积极开发中，桌面版与Web版将同步更新。
+对于有播放本地音乐或播放服务器上音乐需求的人可以试试，若遇到任何问题可以发 issue 反馈。
+
+### 新增
+
+- 新增「设置 → 其他设置 → 主窗口使用软件内置的圆角及阴影」选项 (#2360)
+  *默认启用，关闭后将使用系统原生的窗口样式，该选项重启软件后生效*
+- 开放 API 新增播放器声音大小、静音、播放进度控制、完整歌词获取，详情看接入文档 (#2386)
+- 新增「设置 → 播放设置 → 调换歌词翻译与歌词罗马音位置」选项，默认关闭 (#2451)
+- 新增启动参数 `-hidden`，在启动时将软件最小化到系统托盘 (#2459)
+- 新增 Any Listen 歌词（用于支持已下载歌曲的歌词逐字播放）标签数据读取与播放 (#2485)
+- 新增 Any Listen 歌词（包含逐字歌词、翻译、罗马音歌词，如果有）嵌入与下载，默认启用
+- 下载列表菜单新增歌曲添加弹窗，允许将所选歌曲的在线版本添加到收藏列表 (#2537)
+
+### 修复
+
+- 尝试修复进度为0时仍然显示下载完成的问题 (#2471)
+- 修复TX源搜索失败 (#2575 @Folltoshe)
+- 修复MG源歌单加载失败
+- 修复MG源评论加载失败
+
+### 变更
+
+- 调换「歌词翻译」与「歌词罗马音」的位置，现在歌词罗马音在歌词翻译的上方展示
+  *若你想要恢复以前的行为，可以开启「调换歌词翻译与歌词罗马音位置」选项*
+- 更新代理配置规则，现在不启用代理时，图片、音频加载将不再走系统代理 (#2382 @Folltoshe)
+- 字体设置可以最多设置两种字体（[any-listen#82](https://github.com/any-listen/any-listen/issues/82)）
+
+### 其他
+
+- 更新 Electron 到 37.6.0
+
 ## [2.11.0](https://github.com/lyswhut/lx-music-desktop/compare/v2.10.0...v2.11.0) - 2025-05-01
 
 ### 新增
