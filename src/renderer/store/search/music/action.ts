@@ -1,7 +1,8 @@
 import { markRaw } from '@common/utils/vueTools'
 import music from '@renderer/utils/musicSdk'
-import { deduplicationList, toNewMusicInfo } from '@renderer/utils'
-import { sortInsert, similar } from '@common/utils/common'
+import { deduplicationList, getMusicSearchScore, toNewMusicInfo } from '@renderer/utils'
+import { sortInsert } from '@common/utils/common'
+import { apiSource } from '@renderer/store'
 
 import { sources, maxPages, listInfos } from './state'
 
@@ -20,11 +21,16 @@ interface SearchResult {
  * @param keyword 搜索关键词
  * @returns 排序后的列表
  */
-const handleSortList = (list: LX.Music.MusicInfo[], keyword: string) => {
+const handleSortList = (list: LX.Music.MusicInfo[], keyword: string, rankMap: Map<string, number>) => {
   let arr: any[] = []
   for (const item of list) {
     sortInsert(arr, {
-      num: similar(keyword, `${item.name} ${item.singer}`),
+      num: getMusicSearchScore(keyword, item.name, item.singer, {
+        rank: rankMap.get(item.id),
+        source: item.source as LX.OnlineSource,
+        currentSource: apiSource.value,
+        qualitys: (item as any).meta?._qualitys,
+      }),
       data: item,
     })
   }
@@ -37,10 +43,16 @@ const setLists = (results: SearchResult[], page: number, text: string): LX.Music
   let totals = []
   let limit = 0
   let list = []
+  // 记录各歌曲在自己平台本次搜索结果中的名次，用于排序时参考平台相关度
+  const rankMap = new Map<string, number>()
   for (const source of results) {
     maxPages[source.source] = source.allPage
     limit = Math.max(source.limit, limit)
     if (source.allPage < page) continue
+    source.list.forEach((item, index) => {
+      const id = `${item.source}_${(item as any).songmid}`
+      if (!rankMap.has(id)) rankMap.set(id, index)
+    })
     list.push(...source.list)
     pages.push(source.allPage)
     totals.push(source.total)
@@ -53,7 +65,7 @@ const setLists = (results: SearchResult[], page: number, text: string): LX.Music
   else listInfo.total = limit * page
   // listInfo.limit = limit
   listInfo.page = page
-  listInfo.list = handleSortList(list, text)
+  listInfo.list = handleSortList(list, text, rankMap)
   if (text && !list.length && page == 1) listInfo.noItemLabel = window.i18n.t('no_item')
   else listInfo.noItemLabel = ''
   return listInfo.list

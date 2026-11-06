@@ -1,6 +1,8 @@
 import { markRawList } from '@common/utils/vueTools'
 import music from '@renderer/utils/musicSdk'
-import { sortInsert, similar } from '@common/utils/common'
+import { getSongListSearchScore } from '@renderer/utils'
+import { sortInsert } from '@common/utils/common'
+import { apiSource } from '@renderer/store'
 
 import type { ListInfoItem } from './state'
 import { sources, maxPages, listInfos } from './state'
@@ -19,11 +21,15 @@ interface SearchResult {
  * @param keyword 搜索关键词
  * @returns 排序后的列表
  */
-const handleSortList = (list: ListInfoItem[], keyword: string) => {
+const handleSortList = (list: ListInfoItem[], keyword: string, rankMap: Map<string, number>) => {
   let arr: any[] = []
   for (const item of list) {
     sortInsert(arr, {
-      num: similar(keyword, item.name),
+      num: getSongListSearchScore(keyword, item.name, {
+        rank: rankMap.get(`${item.source}_${item.id}`),
+        source: item.source,
+        currentSource: apiSource.value,
+      }),
       data: item,
     })
   }
@@ -38,7 +44,13 @@ const setLists = (results: SearchResult[], page: number, text: string): ListInfo
   let totals = []
   let limit = 0
   let list = []
+  // 记录各歌单在自己平台本次搜索结果中的名次，用于排序时参考平台相关度
+  const rankMap = new Map<string, number>()
   for (const source of results) {
+    source.list.forEach((item, index) => {
+      const key = `${item.source}_${item.id}`
+      if (!rankMap.has(key)) rankMap.set(key, index)
+    })
     list.push(...source.list)
     totals.push(source.total)
     maxTotals[source.source] = source.total
@@ -52,7 +64,7 @@ const setLists = (results: SearchResult[], page: number, text: string): ListInfo
   if (page == 1 || (total && list.length)) listInfo.total = total
   else listInfo.total = limit * page
   listInfo.page = page
-  listInfo.list = handleSortList(list, text)
+  listInfo.list = handleSortList(list, text, rankMap)
   if (text && !list.length && page == 1) listInfo.noItemLabel = window.i18n.t('no_item')
   else listInfo.noItemLabel = ''
   return listInfo.list
