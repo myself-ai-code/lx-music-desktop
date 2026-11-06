@@ -45,6 +45,23 @@ let maxTotals: Partial<Record<LX.OnlineSource, number>> = {
 // 当前搜索标识（源 + 关键词），用于判断后台探测结果是否已过期
 let currentSearchSignature = ''
 let probingSignature = ''
+// 探测得到的真实总数上限（按搜索标识缓存），避免后续翻页时被源虚报的总数重新撑大
+const totalCaps = new Map<string, number>()
+
+const getSearchTotalCap = (signature: string) => totalCaps.get(signature)
+
+const clampTotal = (total: number, signature: string) => {
+  const cap = getSearchTotalCap(signature)
+  return cap == null ? total : Math.min(total, cap)
+}
+
+const setSearchTotalCap = (signature: string, total: number) => {
+  totalCaps.set(signature, total)
+  if (totalCaps.size > 30) {
+    const oldest = totalCaps.keys().next().value
+    if (oldest != null) totalCaps.delete(oldest)
+  }
+}
 
 /**
  * 后台探测各源真实可访问的最后一页，修正源虚报的总页数
@@ -79,6 +96,7 @@ const startLastPageProbe = (
       if (probingSignature == signature) probingSignature = ''
       if (lastPage == null || signature != currentSearchSignature) return
       const total = lastPage * limit
+      setSearchTotalCap(signature, total)
       if (listInfo.total > total) listInfo.total = total
     }).catch(err => {
       if (probingSignature == signature) probingSignature = ''
@@ -100,7 +118,7 @@ const getValidTotal = (totals: any[]) => {
   return total
 }
 
-const setLists = (results: SearchResult[], page: number, text: string): ListInfoItem[] => {
+const setLists = (results: SearchResult[], page: number, text: string, signature: string): ListInfoItem[] => {
   let totals = []
   let limit = 0
   let list = []
@@ -125,7 +143,7 @@ const setLists = (results: SearchResult[], page: number, text: string): ListInfo
   let listInfo = listInfos.all
   // 所有源都没有该页数据时 limit 可能为 0，回退到默认分页大小，避免页码被隐藏
   if (!limit) limit = listInfo.limit
-  const total = getValidTotal(totals)
+  const total = clampTotal(getValidTotal(totals), signature)
   if (page == 1) {
     listInfo.total = total || limit
   } else if (total && list.length) {
@@ -134,6 +152,9 @@ const setLists = (results: SearchResult[], page: number, text: string): ListInfo
   } else if (listInfo.total < limit * page) {
     listInfo.total = limit * page
   }
+  // 探测到的真实页数优先，避免翻页时被源虚报的总数重新撑大
+  const cap = getSearchTotalCap(signature)
+  if (cap != null && listInfo.total > cap) listInfo.total = cap
   listInfo.page = page
   listInfo.list = handleSortList(list, text, rankMap)
   if (text && !list.length && page == 1) listInfo.noItemLabel = window.i18n.t('no_item')
@@ -141,15 +162,18 @@ const setLists = (results: SearchResult[], page: number, text: string): ListInfo
   return listInfo.list
 }
 
-const setList = (datas: SearchResult, page: number, text: string): ListInfoItem[] => {
+const setList = (datas: SearchResult, page: number, text: string, signature: string): ListInfoItem[] => {
   // console.log(datas.source, datas.list)
   let listInfo = listInfos[datas.source]!
   listInfo.list = markRawList(datas.list)
   const limit = datas.limit || listInfo.limit
-  const total = getValidTotal([datas.total])
+  const total = clampTotal(getValidTotal([datas.total]), signature)
   if (page == 1) listInfo.total = total || limit
   else if (total && datas.list.length) listInfo.total = Math.max(listInfo.total, total)
   else if (listInfo.total < limit * page) listInfo.total = limit * page
+  // 探测到的真实页数优先
+  const cap = getSearchTotalCap(signature)
+  if (cap != null && listInfo.total > cap) listInfo.total = cap
   listInfo.page = page
   listInfo.limit = limit
   if (text && !datas.list.length && page == 1) listInfo.noItemLabel = window.i18n.t('no_item')
@@ -197,7 +221,7 @@ export const search = async(text: string, page: number, sourceId: LX.OnlineSourc
     }
     return Promise.all(task).then((results: SearchResult[]) => {
       if (key != listInfo.key) return []
-      const list = setLists(results, page, text)
+      const list = setLists(results, page, text, signature)
       if (page == 1 && list.length) startLastPageProbe(results, text, signature, listInfos.all.limit, listInfo)
       return list
     })
@@ -207,7 +231,7 @@ export const search = async(text: string, page: number, sourceId: LX.OnlineSourc
     listInfo.key = key
     return (music[sourceId]?.songList.search(text, page, listInfo.limit).then((data: SearchResult) => {
       if (key != listInfo.key) return []
-      const list = setList(data, page, text)
+      const list = setList(data, page, text, signature)
       if (page == 1 && list.length) startLastPageProbe([data], text, signature, listInfo.limit, listInfo)
       return list
     }) ?? Promise.reject(new Error('source not found: ' + sourceId))).catch((error: any) => {
