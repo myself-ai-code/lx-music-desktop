@@ -142,7 +142,7 @@ export default {
         // 歌单详情页只加载了当前页，下载全部需要拉取所有分页
         const list = await getListDetailAll(listDetailInfo.id, listDetailInfo.source)
         // 过滤本地歌曲与当前音源不支持下载的歌曲
-        const targets = list.filter(item => item.source != 'local' && assertApiSupport(item.source))
+        const targets = list.filter(item => assertApiSupport(item.source))
         if (!targets.length) {
           void dialog({
             message: window.i18n.t('lists__download_all_empty'),

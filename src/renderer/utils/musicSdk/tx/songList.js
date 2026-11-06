@@ -9,6 +9,7 @@ export default {
   limit_list: 36,
   limit_song: 100000,
   successCode: 0,
+  total: 0,
   sortList: [
     {
       name: '推荐',
@@ -405,8 +406,14 @@ export default {
       },
     })
       .promise.then(({ body }) => {
-        if (body.code != 0) return this.search(text, page, limit, ++retryNum)
+        if (body.code != 0) {
+          // -3001 表示页码超出可访问范围，直接按空结果处理，避免无意义的重试
+          if (body.code == -3001) return { list: [], limit, total: this.total, source: 'tx' }
+          return this.search(text, page, limit, ++retryNum)
+        }
         // console.log(body.data.list)
+        // 翻页后接口可能不再返回总数，沿用第一次搜索到的总数
+        this.total = page == 1 ? (body.data.sum ?? 0) : (body.data.sum ?? this.total ?? 0)
         return {
           list: body.data.list.map(item => {
             return {
@@ -423,7 +430,7 @@ export default {
             }
           }),
           limit,
-          total: body.data.sum,
+          total: this.total,
           source: 'tx',
         }
       })
