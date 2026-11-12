@@ -2,6 +2,34 @@ import { getMusicInfosByList } from './musicInfo'
 import { createHttpFetch } from './util'
 
 export default {
+  limit: 20,
+  async musicAlbumSearch(str, page, limit) {
+    const result = await createHttpFetch(`http://mobilecdn.kugou.com/api/v3/search/album?keyword=${encodeURIComponent(str)}&page=${page}&pagesize=${limit}`)
+    if (!result?.info) throw new Error('search album failed')
+    return result
+  },
+  handleSearchResult(rawList) {
+    if (!Array.isArray(rawList)) return []
+    return rawList.map(item => ({
+      id: String(item.albumid ?? item.album_id ?? ''),
+      name: item.albumname ?? item.album_name ?? '',
+      singer: item.singername ?? item.author_name ?? '',
+      img: (item.imgurl ?? item.sizable_cover ?? '').replace('{size}', '240'),
+      publishTime: item.publishtime ?? item.publish_date ?? '',
+      songCount: Number(item.songcount ?? item.song_count) || 0,
+      source: 'kg',
+    })).filter(item => item.id)
+  },
+  async search(str, page = 1, limit = this.limit) {
+    const result = await this.musicAlbumSearch(str, page, limit)
+    return {
+      list: this.handleSearchResult(result.info),
+      total: Number(result.total) || 0,
+      page,
+      limit,
+      source: 'kg',
+    }
+  },
   /**
    * 通过AlbumId获取专辑信息
    * @param {*} id
@@ -59,5 +87,16 @@ export default {
         // play_count: this.formatPlayCount(info.count),
       },
     }
+  },
+  async getAlbumDetailAll(id) {
+    const limit = 200
+    const first = await this.getAlbumDetail(id, 1, limit)
+    const list = [...first.list]
+    const maxPage = Math.ceil(first.total / limit)
+    for (let page = 2; page <= maxPage; page++) {
+      const result = await this.getAlbumDetail(id, page, limit)
+      list.push(...result.list)
+    }
+    return list
   },
 }

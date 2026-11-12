@@ -87,7 +87,7 @@
               </div>
             </template>
             <template #footer>
-              <div :class="$style.pagination">
+              <div v-if="!hidePagination" :class="$style.pagination">
                 <material-pagination :count="total" :limit="limit" :page="page" @btn-click="$emit('togglePage', $event)" />
               </div>
             </template>
@@ -123,7 +123,7 @@
               </div>
             </template>
             <template #footer>
-              <div :class="$style.pagination">
+              <div v-if="!hidePagination" :class="$style.pagination">
                 <material-pagination :count="total" :limit="limit" :page="page" @btn-click="$emit('togglePage', $event)" />
               </div>
             </template>
@@ -189,6 +189,10 @@ export default {
       default: '',
     },
     checkApiSource: {
+      type: Boolean,
+      default: false,
+    },
+    hidePagination: {
       type: Boolean,
       default: false,
     },

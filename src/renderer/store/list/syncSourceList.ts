@@ -2,13 +2,21 @@ import { setListUpdateTime } from '@renderer/utils/data'
 import { setFetchingListStatus, overwriteListMusics, setUpdateTime } from './action'
 import { getListDetailAll } from '@renderer/store/songList/action'
 import { getListDetailAll as getBoardListAll } from '@renderer/store/leaderboard/action'
+import music from '@renderer/utils/musicSdk'
+import { toNewMusicInfo } from '@renderer/utils'
 import { dateFormat } from '@common/utils/common'
 
 const fetchList = async(id: string, source: LX.OnlineSource, sourceListId: string) => {
   setFetchingListStatus(id, true)
 
   let promise
-  if (/^board__/.test(sourceListId)) {
+  if (/^album__/.test(sourceListId)) {
+    const albumId = sourceListId.replace(/^album__/, '')
+    const api = (music as any)[source]?.album
+    promise = albumId && api?.getAlbumDetailAll
+      ? api.getAlbumDetailAll(albumId).then((list: LX.Music.MusicInfo[]) => list.map(item => toNewMusicInfo(item) as LX.Music.MusicInfoOnline))
+      : Promise.reject(new Error('album source not found: ' + source))
+  } else if (/^board__/.test(sourceListId)) {
     const id = sourceListId.replace(/^board__/, '')
     promise = id ? getBoardListAll(id, true) : Promise.reject(new Error('id not defined: ' + sourceListId))
   } else {

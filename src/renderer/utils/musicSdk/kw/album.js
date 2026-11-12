@@ -6,6 +6,36 @@ import { formatSinger, objStr2JSON } from './util'
 export default {
   limit_list: 36,
   limit_song: 1000,
+  limit: 20,
+  async musicAlbumSearch(str, page, limit) {
+    const request = httpFetch(`http://search.kuwo.cn/r.s?all=${encodeURIComponent(str)}&ft=album&itemset=web_2013&client=kt&pn=${page - 1}&rn=${limit}&rformat=json&encoding=utf8`)
+    const { statusCode, body } = await request.promise
+    if (statusCode != 200) throw new Error('search album failed')
+    return typeof body == 'string' ? objStr2JSON(body) : body
+  },
+  handleSearchResult(rawList) {
+    if (!Array.isArray(rawList)) return []
+    return rawList.map(item => ({
+      id: String(item.albumid ?? item.ALBUMID ?? item.id ?? ''),
+      name: decodeName(item.album ?? item.ALBUM ?? item.name ?? ''),
+      singer: decodeName(item.artist ?? item.ARTIST ?? item.singer ?? ''),
+      img: item.img ?? item.hts_img ?? item.pic ?? item.PIC ?? '',
+      publishTime: item.pub ?? item.releasedate ?? item.RELEASEDATE ?? item.publishTime ?? '',
+      songCount: Number(item.musiccnt ?? item.songnum ?? item.SONGNUM ?? item.songCount) || 0,
+      source: 'kw',
+    })).filter(item => item.id)
+  },
+  async search(str, page = 1, limit = this.limit) {
+    const result = await this.musicAlbumSearch(str, page, limit)
+    const rawList = result.albumlist ?? result.abslist ?? result.data ?? []
+    return {
+      list: this.handleSearchResult(rawList),
+      total: Number(result.total ?? result.totalnum ?? result.totalCount) || 0,
+      page,
+      limit,
+      source: 'kw',
+    }
+  },
   filterListDetail(rawList, albumName, albumId) {
     // console.log(rawList)
     // console.log(rawList.length, rawList2.length)
@@ -100,6 +130,13 @@ export default {
         },
       }
     })
+  },
+  async getAlbumDetail(id, page = 1) {
+    return this.getAlbumListDetail(id, page)
+  },
+  async getAlbumDetailAll(id) {
+    const result = await this.getAlbumListDetail(id, 1)
+    return result.list
   },
   // getAlbumListDetail(id, page, retryNum = 0) {
   //   if (retryNum > 2) return Promise.reject(new Error('try max num'))
