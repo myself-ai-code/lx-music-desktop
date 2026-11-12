@@ -83,6 +83,8 @@
   "leaderboard": "차트",
   "list__add_to": "추가할 위치...",
   "list__collect": "담기",
+  "album__collect_success": "앨범을 담았습니다",
+  "album__download_success": "다운로드 목록에 추가했습니다",
   "list__copy_name": "이름 복사",
   "list__dislike": "싫어요",
   "list__download": "다운로드",

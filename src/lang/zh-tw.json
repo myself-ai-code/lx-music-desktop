@@ -83,6 +83,8 @@
   "leaderboard": "排行榜",
   "list__add_to": "加入到...",
   "list__collect": "收藏",
+  "album__collect_success": "專輯收藏成功",
+  "album__download_success": "已加入下載清單",
   "list__copy_name": "複製歌曲名",
   "list__dislike": "不喜歡",
   "list__download": "下載",

@@ -27,7 +27,7 @@
         :no-item="listInfo.noItemLabel"
       />
     </div>
-    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" teleport="#view" />
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" teleport="#view" @confirm="handleDownloadConfirm" />
   </div>
 </template>
 
@@ -184,7 +184,10 @@ export default {
             cancelButtonText: window.i18n.t('lists__import_part_button_cancel'),
             confirmButtonText: window.i18n.t('confirm_button_text'),
           })
-          if (confirm) await syncSourceList(targetList)
+          if (confirm) {
+            await syncSourceList(targetList)
+            void dialog({ message: window.i18n.t('album__collect_success'), confirmButtonText: window.i18n.t('ok') })
+          }
           return
         }
         const list = await ensureAllLoaded()
@@ -196,6 +199,7 @@ export default {
           source: albumSource.value as LX.OnlineSource,
           sourceListId,
         })
+        void dialog({ message: window.i18n.t('album__collect_success'), confirmButtonText: window.i18n.t('ok') })
       } catch (err) {
         console.log(err)
       } finally {
@@ -222,6 +226,10 @@ export default {
       }
     }
 
+    const handleDownloadConfirm = () => {
+      void dialog({ message: window.i18n.t('album__download_success'), confirmButtonText: window.i18n.t('ok') })
+    }
+
     const handleBack = () => {
       router.back()
     }
@@ -246,6 +254,7 @@ export default {
       handlePlayAll,
       handleCollect,
       handleDownloadAll,
+      handleDownloadConfirm,
       handleBack,
     }
   },
