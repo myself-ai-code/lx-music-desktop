@@ -1,14 +1,19 @@
 import { addListMusics, setFetchingListStatus } from '@renderer/store/list/action'
 import { showSelectDialog } from '@renderer/utils/ipc'
+import { appSetting } from '@renderer/store/setting'
+import { basename } from '@common/utils/nodejs'
 
 
-const handleAddMusics = async(listId: string, filePaths: string[], index: number = -1) => {
-  // console.log(index + 1, index + 201)
-  const paths = filePaths.slice(index + 1, index + 201)
-  const musicInfos = await window.lx.worker.main.createLocalMusicInfos(paths)
-  if (musicInfos.length) await addListMusics(listId, musicInfos)
-  index += 200
-  if (filePaths.length - 1 > index) await handleAddMusics(listId, filePaths, index)
+const handleAddMusics = async(listId: string, filePaths: string[], location: LX.AddMusicLocationType) => {
+  const batchSize = 200
+  const batchCount = Math.ceil(filePaths.length / batchSize)
+  for (let batch = 0; batch < batchCount; batch++) {
+    // 顶部插入时从最后一批开始，保持整次导入的歌曲顺序。
+    const index = (location == 'top' ? batchCount - batch - 1 : batch) * batchSize
+    const paths = filePaths.slice(index, index + batchSize)
+    const musicInfos = await window.lx.worker.main.createLocalMusicInfos(paths)
+    if (musicInfos.length) await addListMusics(listId, musicInfos, location)
+  }
 }
 export const addLocalFile = async(listInfo: LX.List.MyListInfo) => {
   const { canceled, filePaths } = await showSelectDialog({
@@ -23,8 +28,13 @@ export const addLocalFile = async(listInfo: LX.List.MyListInfo) => {
   })
   if (canceled || !filePaths.length) return
 
-  console.log(filePaths)
+  const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' })
+  const sortedPaths = [...filePaths].sort((a, b) => collator.compare(basename(a), basename(b)) || collator.compare(a, b))
+  const location = appSetting['list.addMusicLocationType']
   setFetchingListStatus(listInfo.id, true)
-  await handleAddMusics(listInfo.id, filePaths)
-  setFetchingListStatus(listInfo.id, false)
+  try {
+    await handleAddMusics(listInfo.id, sortedPaths, location)
+  } finally {
+    setFetchingListStatus(listInfo.id, false)
+  }
 }

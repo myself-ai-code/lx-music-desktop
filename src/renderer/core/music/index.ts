@@ -11,6 +11,7 @@ import {
   getMusicUrl as getDownloadMusicUrl,
   getPicUrl as getDownloadPicUrl,
   getLyricInfo as getDownloadLyricInfo,
+  getDownloadedMusicPath,
 } from './download'
 import {
   getMusicUrl as getLocalMusicUrl,
@@ -25,13 +26,27 @@ export const getMusicUrl = async({
   isRefresh = false,
   onToggleSource,
   allowToggleSource,
+  preferToggleSource = false,
 }: {
   musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   isRefresh?: boolean
   quality?: LX.Quality
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
   allowToggleSource?: boolean
+  preferToggleSource?: boolean
 }): Promise<string> => {
+  if (!isRefresh && !('progress' in musicInfo) && musicInfo.source != 'local') {
+    const path = await getDownloadedMusicPath(musicInfo)
+    if (path) return path
+  }
+  const toggleMusicInfo = ('progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo).meta.toggleMusicInfo
+  if (preferToggleSource && toggleMusicInfo) {
+    try {
+      return await getMusicUrl({ musicInfo: toggleMusicInfo, isRefresh, quality, allowToggleSource: false })
+    } catch (err) {
+      console.log('Preferred source unavailable, retrying original music', err)
+    }
+  }
   if ('progress' in musicInfo) {
     return getDownloadMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource })
   } else if (musicInfo.source == 'local') {

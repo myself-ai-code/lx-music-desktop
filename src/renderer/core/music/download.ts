@@ -7,6 +7,32 @@ import {
 } from './online'
 import { buildLyricInfo, getCachedLyricInfo } from './utils'
 import { buildSavePath } from '@renderer/store/download/utils'
+import { downloadList } from '@renderer/store/download/state'
+import { downloadTasksGet } from '@renderer/utils/ipc'
+
+export const getDownloadedMusicPath = async(musicInfo: LX.Music.MusicInfoOnline): Promise<string> => {
+  const findPath = async(tasks: LX.Download.ListItem[]) => {
+    for (const task of tasks) {
+      const original = task.metadata.musicInfo
+      if (!task.isComplate || original.source != musicInfo.source || original.id != musicInfo.id) continue
+      const path = await getDownloadFilePath(task, buildSavePath(task))
+      if (path) return path
+    }
+    return ''
+  }
+
+  try {
+    const path = await findPath(downloadList)
+    if (path) return path
+    // 下载页尚未打开时，持久化记录可能还没有载入内存。
+    const savedTasks = await downloadTasksGet()
+    const loadedIds = new Set(downloadList.map(task => task.id))
+    return await findPath(savedTasks.filter(task => !loadedIds.has(task.id)))
+  } catch (err) {
+    console.error('Failed to look up downloaded music', err)
+    return ''
+  }
+}
 
 export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = true, onToggleSource = () => {} }: {
   musicInfo: LX.Download.ListItem

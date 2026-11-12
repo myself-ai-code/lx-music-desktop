@@ -90,22 +90,14 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
   setAllStatus(window.i18n.t('player__getting_url'))
   if (appSetting['player.autoSkipOnError']) addLoadTimeout()
 
-  // const type = getPlayType(appSetting['player.highQuality'], musicInfo)
-  let toggleMusicInfo = ('progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo).meta.toggleMusicInfo
-
-  return (toggleMusicInfo ? getMusicUrl({
-    musicInfo: toggleMusicInfo,
+  return getMusicUrl({
+    musicInfo,
     isRefresh,
-    allowToggleSource: false,
-  }) : Promise.reject(new Error('not found'))).catch(async() => {
-    return getMusicUrl({
-      musicInfo,
-      isRefresh,
-      onToggleSource(mInfo) {
-        if (diffCurrentMusicInfo(musicInfo)) return
-        setAllStatus(window.i18n.t('toggle_source_try'))
-      },
-    })
+    preferToggleSource: true,
+    onToggleSource(mInfo) {
+      if (diffCurrentMusicInfo(musicInfo)) return
+      setAllStatus(window.i18n.t('toggle_source_try'))
+    },
   }).then(url => {
     if (window.lx.isPlayedStop || diffCurrentMusicInfo(musicInfo)) return null
 
