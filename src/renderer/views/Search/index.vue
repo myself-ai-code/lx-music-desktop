@@ -6,6 +6,7 @@
     </div>
     <div :class="$style.main">
       <song-list-list v-if="searchType == 'songlist'" v-show="searchText" :page="page" :source-id="source" />
+      <album-list v-else-if="searchType == 'album'" v-show="searchText" :page="page" :source-id="source" />
       <music-list v-else v-show="searchText" :page="page" :source-id="source" />
       <blank-view :visible="!searchText" :source="source" />
     </div>
@@ -16,10 +17,13 @@
 import { useRoute, useRouter } from '@common/utils/vueRouter'
 import { searchText } from '@renderer/store/search/state'
 import { getSearchSetting, setSearchSetting } from '@renderer/utils/data'
-import { sources as _sources } from '@renderer/store/search/music'
+import { sources as _musicSources } from '@renderer/store/search/music'
+import { sources as _songlistSources } from '@renderer/store/search/songlist'
+import { sources as _albumSources } from '@renderer/store/search/album'
 
 import MusicList from './MusicList/index.vue'
 import SongListList from './SongListList/index.vue'
+import AlbumList from './AlbumList/index.vue'
 import BlankView from './components/BlankView.vue'
 import { computed, ref } from '@common/utils/vueTools'
 import { sourceNames } from '@renderer/store'
@@ -27,6 +31,17 @@ import { sourceNames } from '@renderer/store'
 const source = ref('kw')
 const searchType = ref(null)
 const page = ref(1)
+
+const getSourceIds = (type) => {
+  switch (type) {
+    case 'songlist':
+      return _songlistSources
+    case 'album':
+      return _albumSources
+    default:
+      return _musicSources
+  }
+}
 
 const verifyQueryParams = async(to, from, next) => {
   let _source = to.query.source
@@ -41,6 +56,14 @@ const verifyQueryParams = async(to, from, next) => {
     next({
       path: to.path,
       query: { ...to.query, source: _source, type: _type, page: _page },
+    })
+    return
+  }
+  // 当前搜索类型不支持该源时回落到聚合搜索
+  if (!getSourceIds(_type).includes(_source)) {
+    next({
+      path: to.path,
+      query: { ...to.query, source: 'all', type: _type, page: _page },
     })
     return
   }
@@ -61,6 +84,7 @@ export default {
   components: {
     MusicList,
     SongListList,
+    AlbumList,
     BlankView,
   },
   beforeRouteEnter: verifyQueryParams,
@@ -69,11 +93,13 @@ export default {
     const route = useRoute()
     const router = useRouter()
 
-    const sources = _sources.map(id => {
-      return {
-        id,
-        label: sourceNames.value[id],
-      }
+    const sources = computed(() => {
+      return getSourceIds(searchType.value ?? 'music').map(id => {
+        return {
+          id,
+          label: sourceNames.value[id],
+        }
+      })
     })
     const handleSourceChange = (id) => {
       void router.replace({
@@ -90,14 +116,17 @@ export default {
       return [
         { label: window.i18n.t('search__type_music'), id: 'music' },
         { label: window.i18n.t('search__type_songlist'), id: 'songlist' },
+        { label: window.i18n.t('search__type_album'), id: 'album' },
       ]
     })
     const handleTypeChange = (type) => {
+      const sourceIds = getSourceIds(type)
       void router.replace({
         path: route.path,
         query: {
           ...route.query,
           type,
+          source: sourceIds.includes(source.value) ? source.value : 'all',
           page: 1,
         },
       })

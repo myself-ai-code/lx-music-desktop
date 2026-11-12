@@ -291,6 +291,7 @@
   "player__volume_muted": "음소거됨",
   "search": "검색",
   "search__hot_search": "인기 검색어",
+  "search__type_album": "앨범",
   "search__type_music": "노래",
   "search__type_songlist": "재생목록",
   "search__welcome": "원하는 것을 검색해보세요~~ 😉",

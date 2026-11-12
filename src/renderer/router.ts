@@ -31,6 +31,14 @@ const router = createRouter({
       },
     },
     {
+      path: '/album/detail',
+      name: 'AlbumDetail',
+      component: require('./views/album/Detail/index.vue').default,
+      meta: {
+        name: 'Search',
+      },
+    },
+    {
       path: '/leaderboard',
       name: 'Leaderboard',
       component: require('./views/Leaderboard/index.vue').default,
