@@ -131,7 +131,7 @@ export default {
           const data = await api.getAlbumDetail(albumId.value, page, BATCH_LIMIT)
           if (version != loadVersion) return false
           const list = (data.list as LX.Music.MusicInfo[]).map(item => toNewMusicInfo(item) as LX.Music.MusicInfoOnline)
-          listInfo.list.push(...list)
+          listInfo.list = [...listInfo.list, ...list]
           listInfo.total = Number(data.total) || listInfo.list.length
           listInfo.limit = Math.max(listInfo.total, 1)
           listInfo.page = 1
