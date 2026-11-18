@@ -69,7 +69,7 @@ export const getMusicType = (musicInfo: LX.Music.MusicInfoOnline, type: LX.Quali
 //   return list.some(s => s.id === musicInfo.id && (s.metadata.type === type || s.metadata.ext === ext))
 // }
 
-export const createDownloadInfo = (musicInfo: LX.Music.MusicInfoOnline, type: LX.Quality, fileName: string, qualityList: LX.QualityList, listId?: string) => {
+export const createDownloadInfo = (musicInfo: LX.Music.MusicInfoOnline, type: LX.Quality, fileName: string, qualityList: LX.QualityList, listId?: string, folderName?: string) => {
   type = getMusicType(musicInfo, type, qualityList)
   let ext = getExt(type)
   const key = `${musicInfo.id}_${type}_${ext}`
@@ -91,6 +91,7 @@ export const createDownloadInfo = (musicInfo: LX.Music.MusicInfoOnline, type: LX
       ext,
       filePath: '',
       listId,
+      folderName,
       fileName: filterFileName(`${clipFileNameLength(formatMusicName(fileName, musicInfo.name, clipNameLength(musicInfo.singer)))}.${ext}`),
     },
   }

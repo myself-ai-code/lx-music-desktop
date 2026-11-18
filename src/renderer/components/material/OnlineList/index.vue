@@ -142,8 +142,8 @@
     <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="selectedList" teleport="#view" @confirm="removeAllSelect" /> -->
     <common-list-add-modal v-model:show="isShowListAdd" :music-info="selectedAddMusicInfo" teleport="#view" />
     <common-list-add-multiple-modal v-model:show="isShowListAddMultiple" :music-list="selectedList" teleport="#view" @confirm="removeAllSelect" />
-    <common-download-modal v-model:show="isShowDownload" :music-info="selectedDownloadMusicInfo" teleport="#view" />
-    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="selectedList" teleport="#view" @confirm="removeAllSelect" />
+    <common-download-modal v-model:show="isShowDownload" :music-info="selectedDownloadMusicInfo" :folder-name="folderName" teleport="#view" />
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="selectedList" :folder-name="folderName" teleport="#view" @confirm="removeAllSelect" />
     <base-menu v-model="isShowItemMenu" :menus="menus" :xy="menuLocation" item-name="name" @menu-click="handleMenuClick" />
   </div>
 </template>
@@ -195,6 +195,10 @@ export default {
     hidePagination: {
       type: Boolean,
       default: false,
+    },
+    folderName: {
+      type: String,
+      default: '',
     },
   },
   emits: ['show-menu', 'play-list', 'togglePage'],

@@ -12,6 +12,7 @@
 
 <script>
 import { createDownloadTasks } from '@renderer/store/download/action'
+import { dialog } from '@renderer/plugins/Dialog'
 
 export default {
   props: {
@@ -27,6 +28,10 @@ export default {
       type: String,
       default: '',
     },
+    folderName: {
+      type: String,
+      default: '',
+    },
     list: {
       type: Array,
       default() {
@@ -39,11 +44,23 @@ export default {
     },
   },
   emits: ['update:show', 'confirm'],
+  data() {
+    return { isSubmitting: false }
+  },
   methods: {
-    handleClick(quality) {
-      void createDownloadTasks(this.list.filter(item => item.source != 'local'), quality, this.listId)
-      this.handleClose()
-      this.$emit('confirm')
+    async handleClick(quality) {
+      if (this.isSubmitting) return
+      this.isSubmitting = true
+      try {
+        await createDownloadTasks(this.list.filter(item => item.source != 'local'), quality, this.listId, this.folderName)
+        this.handleClose()
+        this.$emit('confirm')
+      } catch (err) {
+        console.error(err)
+        void dialog({ message: this.$t('deep_link__handle_error_tip', { message: err.message }), confirmButtonText: this.$t('ok') })
+      } finally {
+        this.isSubmitting = false
+      }
     },
     handleClose() {
       this.$emit('update:show', false)

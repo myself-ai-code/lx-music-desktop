@@ -12,6 +12,7 @@
 <script>
 import { qualityList } from '@renderer/store'
 import { createDownloadTasks } from '@renderer/store/download/action'
+import { dialog } from '@renderer/plugins/Dialog'
 
 export default {
   props: {
@@ -24,6 +25,10 @@ export default {
       required: true,
     },
     listId: {
+      type: String,
+      default: '',
+    },
+    folderName: {
       type: String,
       default: '',
     },
@@ -42,6 +47,9 @@ export default {
       qualityList,
     }
   },
+  data() {
+    return { isSubmitting: false }
+  },
   computed: {
     info() {
       return this.musicInfo || {}
@@ -54,9 +62,18 @@ export default {
     },
   },
   methods: {
-    handleClick(quality) {
-      void createDownloadTasks([this.musicInfo], quality, this.listId)
-      this.handleClose()
+    async handleClick(quality) {
+      if (this.isSubmitting) return
+      this.isSubmitting = true
+      try {
+        await createDownloadTasks([this.musicInfo], quality, this.listId, this.folderName)
+        this.handleClose()
+      } catch (err) {
+        console.error(err)
+        void dialog({ message: this.$t('deep_link__handle_error_tip', { message: err.message }), confirmButtonText: this.$t('ok') })
+      } finally {
+        this.isSubmitting = false
+      }
     },
     handleClose() {
       this.$emit('update:show', false)

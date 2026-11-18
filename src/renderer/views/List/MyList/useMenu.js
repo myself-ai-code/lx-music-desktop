@@ -92,6 +92,7 @@ export default ({
     if (source) {
       const { sourceListId } = userLists[index]
       if (sourceListId) {
+        if (/^album__/.test(sourceListId)) return !!musicSdk[source]?.album?.getAlbumDetail
         if (/board__/.test(sourceListId)) {
           // const id = sourceListId.replace(/board__/, '')
           return !!musicSdk[source]?.leaderboard?.getDetailPageUrl
@@ -116,7 +117,9 @@ export default ({
         menuControl.rename = true
         menuControl.remove = true
         source = userLists[index].source
-        menuControl.sync = !!source && !!musicSdk[source]?.songList
+        menuControl.sync = /^album__/.test(userLists[index].sourceListId ?? '')
+          ? !!musicSdk[source]?.album?.getAlbumDetailAll
+          : !!source && !!musicSdk[source]?.songList
         break
     }
     // menuControl.sort = !!getList(this.getTargetListInfo(index)?.id).length

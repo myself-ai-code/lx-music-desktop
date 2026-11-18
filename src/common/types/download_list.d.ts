@@ -60,6 +60,7 @@ declare global {
           fileName: string
           filePath: string
           listId?: string
+          folderName?: string
         }
       }
 

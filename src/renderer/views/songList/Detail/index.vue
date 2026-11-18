@@ -41,11 +41,12 @@
         :total="listDetailInfo.total"
         :list="listDetailInfo.list"
         :no-item="listDetailInfo.noItemLabel"
+        :folder-name="listDetailInfo.info.name"
         @play-list="handlePlayList"
         @toggle-page="togglePage"
       />
     </div>
-    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" teleport="#view" />
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" :folder-name="listDetailInfo.info.name" teleport="#view" />
   </div>
 </template>
 

@@ -145,6 +145,10 @@ export default {
     const handleOpenSourceDetailPage = async(listInfo) => {
       const { source, sourceListId } = listInfo
       if (!sourceListId) return
+      if (/^album__/.test(sourceListId)) {
+        await router.push({ path: '/album/detail', query: { source, id: sourceListId.replace(/^album__/, ''), name: listInfo.name } })
+        return
+      }
       let url
       if (/board__/.test(sourceListId)) {
         const id = sourceListId.replace(/board__/, '')

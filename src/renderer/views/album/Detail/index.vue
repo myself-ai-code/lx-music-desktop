@@ -11,9 +11,9 @@
         </p>
       </div>
       <div :class="$style.buttons">
-        <base-btn :class="$style.btn" :disabled="isFetchingAll || !listInfo.list.length" @click="handlePlayAll">{{ $t('list__play') }}</base-btn>
-        <base-btn :class="$style.btn" :disabled="isFetchingAll || !listInfo.list.length" @click="handleCollect">{{ $t('list__collect') }}</base-btn>
-        <base-btn :class="$style.btn" :disabled="isFetchingAll || !listInfo.list.length" @click="handleDownloadAll">{{ isFetchingAll ? $t('lists__download_all_loading') : $t('lists__download_all') }}</base-btn>
+        <base-btn :class="$style.btn" :disabled="isFetchingAll || (!listInfo.list.length && !loadFailed)" @click="handlePlayAll">{{ $t('list__play') }}</base-btn>
+        <base-btn :class="$style.btn" :disabled="isFetchingAll || (!listInfo.list.length && !loadFailed)" @click="handleCollect">{{ $t('list__collect') }}</base-btn>
+        <base-btn :class="$style.btn" :disabled="isFetchingAll || (!listInfo.list.length && !loadFailed)" @click="handleDownloadAll">{{ isFetchingAll ? $t('lists__download_all_loading') : $t('lists__download_all') }}</base-btn>
         <base-btn :class="$style.btn" @click="handleBack">{{ $t('back') }}</base-btn>
       </div>
     </div>
@@ -25,24 +25,27 @@
         :total="listInfo.total"
         :list="listInfo.list"
         :no-item="listInfo.noItemLabel"
+        :folder-name="album.name"
+        @play-list="handlePlayList"
       />
     </div>
-    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" teleport="#view" @confirm="handleDownloadConfirm" />
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="downloadMusicList" :folder-name="album.name" teleport="#view" @confirm="handleDownloadConfirm" />
   </div>
 </template>
 
 <script lang="ts">
-import { computed, reactive, ref, shallowRef, watch } from '@common/utils/vueTools'
+import { computed, reactive, ref, shallowRef, watch, markRaw, markRawList, onBeforeUnmount } from '@common/utils/vueTools'
 import music from '@renderer/utils/musicSdk'
 import { toMD5, toNewMusicInfo } from '@renderer/utils'
 import { createUserList, setTempList } from '@renderer/store/list/action'
-import { userLists } from '@renderer/store/list/state'
+import { userLists, tempListMeta } from '@renderer/store/list/state'
 import syncSourceList from '@renderer/store/list/syncSourceList'
 import { playList } from '@renderer/core/player/action'
 import { LIST_IDS } from '@common/constants'
 import { useRouter } from '@common/utils/vueRouter'
 import { assertApiSupport } from '@renderer/store/utils'
 import { dialog } from '@renderer/plugins/Dialog'
+import useKeyBack from '../../songList/Detail/useKeyBack'
 
 const albumSource = ref('tx')
 const albumId = ref('')
@@ -104,6 +107,12 @@ export default {
     const BATCH_LIMIT = 100
     let loadVersion = 0
     let loadPromise: Promise<boolean> | null = null
+    const loadFailed = ref(false)
+
+    const showError = (err: unknown) => {
+      console.error(err)
+      void dialog({ message: window.i18n.t('deep_link__handle_error_tip', { message: err instanceof Error ? err.message : String(err) }), confirmButtonText: window.i18n.t('ok') })
+    }
 
     const album = computed(() => ({
       name: albumName.value,
@@ -117,6 +126,8 @@ export default {
 
     const load = async() => {
       const version = ++loadVersion
+      loadFailed.value = false
+      const id = albumId.value
       const api = getAlbumApi()
       if (!albumId.value || !api?.getAlbumDetail) {
         listInfo.list = []
@@ -128,10 +139,10 @@ export default {
       try {
         let page = 1
         while (true) {
-          const data = await api.getAlbumDetail(albumId.value, page, BATCH_LIMIT)
+          const data = await api.getAlbumDetail(id, page, BATCH_LIMIT)
           if (version != loadVersion) return false
           const list = (data.list as LX.Music.MusicInfo[]).map(item => toNewMusicInfo(item) as LX.Music.MusicInfoOnline)
-          listInfo.list = [...listInfo.list, ...list]
+          listInfo.list = markRaw(markRawList([...listInfo.list, ...list]))
           listInfo.total = Number(data.total) || listInfo.list.length
           listInfo.limit = Math.max(listInfo.total, 1)
           listInfo.page = 1
@@ -141,6 +152,8 @@ export default {
           page++
         }
       } catch (err) {
+        if (version != loadVersion) return false
+        loadFailed.value = true
         console.log(err)
         if (!listInfo.list.length) listInfo.noItemLabel = window.i18n.t('list__load_failed')
         return false
@@ -150,32 +163,45 @@ export default {
     }
 
     const ensureAllLoaded = async() => {
+      if (loadFailed.value) {
+        listInfo.list = []
+        loadPromise = null
+      }
       if (!loadPromise) loadPromise = load()
+      const version = loadVersion
       const isComplete = await loadPromise
+      if (version != loadVersion) throw new Error('专辑已切换，请重新操作')
       if (!isComplete) throw new Error('获取专辑歌曲失败')
       return listInfo.list
     }
 
-    const handlePlayAll = async() => {
+    const handlePlayList = async(index: number) => {
       if (isFetchingAll.value || !albumId.value) return
       isFetchingAll.value = true
       try {
-        const list = await ensureAllLoaded()
-        if (!list.length) return
+        const list = listInfo.list.length ? [...listInfo.list] : await ensureAllLoaded()
+        if (!list[index]) return
         const listId = `album__${albumSource.value}__${albumId.value}`
+        const version = loadVersion
         await setTempList(listId, list)
-        playList(LIST_IDS.TEMP, 0)
+        if (version != loadVersion) return
+        playList(LIST_IDS.TEMP, index)
+        const fullList = await ensureAllLoaded()
+        if (tempListMeta.id == listId && fullList.length > list.length) await setTempList(listId, fullList)
       } catch (err) {
-        console.log(err)
+        showError(err)
       } finally {
         isFetchingAll.value = false
       }
     }
 
+    const handlePlayAll = async() => handlePlayList(0)
+
     const handleCollect = async() => {
       if (isFetchingAll.value || !albumId.value) return
       isFetchingAll.value = true
       try {
+        const version = loadVersion
         const sourceListId = `album__${albumId.value}`
         const targetList = userLists.find(list => list.source == albumSource.value && list.sourceListId == sourceListId)
         if (targetList) {
@@ -184,6 +210,7 @@ export default {
             cancelButtonText: window.i18n.t('lists__import_part_button_cancel'),
             confirmButtonText: window.i18n.t('confirm_button_text'),
           })
+          if (version != loadVersion) return
           if (confirm) {
             await syncSourceList(targetList)
             void dialog({ message: window.i18n.t('album__collect_success'), confirmButtonText: window.i18n.t('ok') })
@@ -191,6 +218,7 @@ export default {
           return
         }
         const list = await ensureAllLoaded()
+        if (!list.length) throw new Error(window.i18n.t('no_item'))
         const listId = `album__${albumSource.value}__${albumId.value}`
         await createUserList({
           name: albumName.value,
@@ -201,7 +229,7 @@ export default {
         })
         void dialog({ message: window.i18n.t('album__collect_success'), confirmButtonText: window.i18n.t('ok') })
       } catch (err) {
-        console.log(err)
+        showError(err)
       } finally {
         isFetchingAll.value = false
       }
@@ -234,9 +262,15 @@ export default {
       router.back()
     }
 
+    useKeyBack(handleBack)
+    onBeforeUnmount(() => { loadVersion++ })
+
     watch([albumSource, albumId], () => {
       loadVersion++
       loadPromise = null
+      loadFailed.value = false
+      isShowDownloadMultiple.value = false
+      downloadMusicList.value = []
       listInfo.list = []
       listInfo.total = 0
       listInfo.page = 1
@@ -248,10 +282,12 @@ export default {
       album,
       listInfo,
       isLoading,
+      loadFailed,
       isFetchingAll,
       isShowDownloadMultiple,
       downloadMusicList,
       handlePlayAll,
+      handlePlayList,
       handleCollect,
       handleDownloadAll,
       handleDownloadConfirm,
